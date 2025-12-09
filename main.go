@@ -292,6 +292,19 @@ func publishDiscoveryMessages(client mqtt.Client) {
 	}
 	publishConfig(client, "button", hostname+"_displaysleep", displaysleepConfig)
 
+	// Sensor for active application
+	activeAppConfig := map[string]interface{}{
+		"name":              hostname + " Active App",
+		"unique_id":         "mac2mqtt_" + hostname + "_active_app",
+		"state_topic":       prefix + "/status/active_app",
+		"icon":              "mdi:application",
+		"availability_topic": prefix + "/status/alive",
+		"payload_available":  "true",
+		"payload_not_available": "false",
+		"device":            device,
+	}
+	publishConfig(client, "sensor", hostname+"_active_app", activeAppConfig)
+
 	log.Println("Published Home Assistant MQTT discovery messages")
 }
 
@@ -325,6 +338,7 @@ var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	updateVolume(client)
 	updateMute(client)
 	updateBattery(client)
+	updateActiveApp(client)
 
 	listen(client, getTopicPrefix()+"/command/#")
 }
@@ -559,6 +573,16 @@ func updateBattery(client mqtt.Client) {
 	token.Wait()
 }
 
+func getActiveApp() string {
+	output := getCommandOutput("/usr/bin/osascript", "-e", "tell application \"System Events\" to get name of first application process whose frontmost is true")
+	return output
+}
+
+func updateActiveApp(client mqtt.Client) {
+	token := publishMQTT(client, getTopicPrefix()+"/status/active_app", 0, false, getActiveApp())
+	token.Wait()
+}
+
 func main() {
 
 	log.Println("Started")
@@ -581,6 +605,7 @@ func main() {
 			case _ = <-volumeTicker.C:
 				updateVolume(mqttClient)
 				updateMute(mqttClient)
+				updateActiveApp(mqttClient)
 
 			case _ = <-batteryTicker.C:
 				updateBattery(mqttClient)

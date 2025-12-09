@@ -12,6 +12,7 @@ The following information is published to MQTT:
 * Volume mute state (true/false)
 * Battery charge percentage
 * Connection status (alive/offline)
+* Active application name
 
 ### Remote Control
 
@@ -41,6 +42,7 @@ mac2mqtt publishes the following metrics to MQTT:
 | **Volume Level** | `mac2mqtt/HOSTNAME/status/volume` | `0` - `100` | Every 2 seconds | Current system volume level as percentage |
 | **Mute Status** | `mac2mqtt/HOSTNAME/status/mute` | `true` / `false` | Every 2 seconds | Whether system audio is muted |
 | **Battery Charge** | `mac2mqtt/HOSTNAME/status/battery` | `0` - `100` | Every 60 seconds | Battery charge percentage (laptops only) |
+| **Active Application** | `mac2mqtt/HOSTNAME/status/active_app` | String | Every 2 seconds | Name of the currently active (frontmost) application |
 
 **Note:** `HOSTNAME` is automatically derived from your macOS computer's hostname (e.g., `bessarabov-osx`).
 
@@ -234,6 +236,7 @@ mac2mqtt supports Home Assistant's MQTT discovery feature. When mac2mqtt connect
 * Binary Sensor - Connection status
 * Sensor - Battery percentage
 * Sensor - Volume level (read-only)
+* Sensor - Active application
 * Switch - Mute/Unmute
 * Number - Volume control (0-100)
 * Button - Sleep
