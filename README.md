@@ -1,33 +1,48 @@
 # mac2mqtt
 
-`mac2mqtt` is a program that allows viewing and controlling some aspects of computers running macOS via MQTT.
+Control and monitor your macOS computer via MQTT. Integrates seamlessly with Home Assistant and other home automation systems.
 
-It publishes to MQTT:
+## Features
 
- * current volume
- * volume mute state
- * battery charge percent
- * if macOS is connected to MQTT
+### Status Monitoring
 
-You can send commands to MQTT to:
+The following information is published to MQTT:
 
- * change volume
- * mute/unmute
- * put computer to sleep
- * shutdown computer
- * turn off display
+* Current volume level (0-100)
+* Volume mute state (true/false)
+* Battery charge percentage
+* Connection status (alive/offline)
+
+### Remote Control
+
+Send commands via MQTT to:
+
+* Set volume level
+* Mute/unmute audio
+* Put computer to sleep
+* Shut down computer
+* Turn off display
+
+## Requirements
+
+* macOS (any version with `osascript` and `pmset` support)
+* MQTT broker (e.g., Mosquitto)
+* Go 1.22+ (only if building from source)
 
 ## Overview
 
-To control macOS via MQTT using this project you need several elements:
+To use mac2mqtt, you need:
 
- * File `mac2mqtt` with compiled program (also known as 'binary' or 'executable')
- * File with configuration `mac2mqtt.yaml`. You need to write this file yourself, but you can use file `mac2mqtt.yaml` stored in this repository as a starting point
- * A system that automatically launches mac2mqtt after macOS restarts. You can run `mac2mqtt` manually without such system, but in such case you need to start `mac2mqtt` every time after restarting macOS. Manually running mac2mqtt is a good starting point when setting up the project.
- * MQTT server (it is often called MQTT Broker)
- * Some system what will read data from MQTT and send command to MQTT. Originally this project was created to make it possible to control macOS computer via [Home Assistant](https://www.home-assistant.io/), but any software that work with MQTT can be used with `mac2mqtt`.
+* **mac2mqtt binary** - The compiled executable
+* **Configuration file** - `mac2mqtt.yaml` with your MQTT broker settings
+* **MQTT broker** - A running MQTT server (local or remote)
+* **Optional: Automation system** - Home Assistant, Node-RED, or any MQTT-compatible platform
 
-It is recommended to put executable file and configuration file in your home directory in the subdirectory `mac2mqtt`:
+Originally created for [Home Assistant](https://www.home-assistant.io/) integration, mac2mqtt works with any MQTT-compatible automation system.
+
+### Recommended Directory Structure
+
+Place the executable and configuration file in your home directory:
 
 ```
 /Users/USERNAME/mac2mqtt/
@@ -37,32 +52,49 @@ It is recommended to put executable file and configuration file in your home dir
 
 ## Installation
 
-There are several ways you can get `mac2mqtt` binary.
+### Option 1: Download Pre-compiled Binary
 
-### Use pre-compiled binaries
+1. Go to the [Releases](../../releases) page
+2. Download the correct file for your Mac:
+   * `mac2mqtt_VERSION_arm64` - Apple Silicon (M1, M2, M3, M4)
+   * `mac2mqtt_VERSION_x86_64` - Intel-based Macs
+3. Make the file executable:
+   ```bash
+   chmod +x mac2mqtt_VERSION_ARCH
+   mv mac2mqtt_VERSION_ARCH ~/mac2mqtt/mac2mqtt
+   ```
 
-Download the file from GitHub Releases section.
+### Option 2: Build from Source
 
-Make sure to download the correct file for your architecture:
+Requirements: [Go 1.22+](https://go.dev/doc/install)
 
- * `mac2mqtt_VERSION_arm64` — use this file for Apple Silicon Macs
- * `mac2mqtt_VERSION_x86_64` — use this file for Intel-based Macs
+```bash
+git clone https://github.com/bessarabov/mac2mqtt.git
+cd mac2mqtt
+go build .
+```
 
-You need to make downloaded file executable `chmod +x FILE_NAME`.
+This creates the `mac2mqtt` executable in the current directory.
 
-### Compile the source code yourself
+## Configuration
 
-You need golang to be installed on your system — https://go.dev/doc/install
+1. Create the configuration file `mac2mqtt.yaml`:
 
- 1. Clone this repo
- 2. `cd mac2mqtt/`
- 3. `go build .`
+```yaml
+# MQTT broker settings
+mqtt_ip: 192.168.1.123
+mqtt_port: 1883
+mqtt_user: your_username
+mqtt_password: your_password
+```
 
-This will create file `mac2mqtt` that you can run.
+2. Edit the values to match your MQTT broker settings
 
 ## Running
 
-To run this program you need 2 files in a directory:
+### Manual Execution
+
+Place both files in the same directory:
 
 ```
 /Users/USERNAME/mac2mqtt/
@@ -70,19 +102,29 @@ To run this program you need 2 files in a directory:
 └── mac2mqtt.yaml
 ```
 
-Take `mac2mqtt.yaml` that is stored in this repository, but edit it, and put your data into it.
+Then run:
 
-Then run `./mac2mqtt` in the terminal. You should see see somthing like this:
+```bash
+cd ~/mac2mqtt
+./mac2mqtt
+```
 
-    $ ./mac2mqtt
-    2021/04/12 10:37:28 Started
-    2021/04/12 10:37:29 Connected to MQTT
-    2021/04/12 10:37:29 Sending 'true' to topic: mac2mqtt/bessarabov-osx/status/alive
+You should see output similar to:
 
-## Running in the background
+```
+$ ./mac2mqtt
+2021/04/12 10:37:28 Started
+2021/04/12 10:37:29 Connected to MQTT
+2021/04/12 10:37:29 Sending 'true' to topic: mac2mqtt/bessarabov-osx/status/alive
+```
 
-You need `mac2mqtt.yaml` and `mac2mqtt` to be placed in the directory `/Users/USERNAME/mac2mqtt/`,
-then you need to create file `/Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist`:
+### Running as a Background Service
+
+To automatically start mac2mqtt on system boot:
+
+1. Ensure `mac2mqtt.yaml` and `mac2mqtt` are in `/Users/USERNAME/mac2mqtt/`
+
+2. Create the LaunchDaemon plist file at `/Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -103,17 +145,25 @@ then you need to create file `/Library/LaunchDaemons/com.bessarabov.mac2mqtt.pli
 </plist>
 ```
 
-And run:
+**Important:** Replace `USERNAME` with your actual macOS username.
 
-    launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+3. Load the service:
 
-(To stop you need to run `launchctl unload /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist`)
+```bash
+sudo launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+```
 
-## Home Assistant sample config
+4. To stop the service:
 
-![](https://user-images.githubusercontent.com/47263/114361105-753c4200-9b7e-11eb-833c-c26a2b7d0e00.png)
+```bash
+sudo launchctl unload /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+```
 
-`configuration.yaml`:
+## Home Assistant Integration
+
+![Home Assistant Example](https://user-images.githubusercontent.com/47263/114361105-753c4200-9b7e-11eb-833c-c26a2b7d0e00.png)
+
+### configuration.yaml
 
 ```yaml
 script:
@@ -170,7 +220,7 @@ number:
     command_topic: "mac2mqtt/bessarabov-osx/command/volume"
 ```
 
-`ui-lovelace.yaml`:
+### ui-lovelace.yaml
 
 ```yaml
 title: Home
@@ -216,66 +266,148 @@ views:
           - sensor.air2_battery
 ```
 
-## MQTT topics structure
+**Note:** Replace `bessarabov-osx` with your computer's hostname in all topic paths.
 
-Program is working with several MQTT topics. All topix are prefixed with `mac2mqtt` + `/` + `COMPUTER_NAME`.
-For example, topic with current volume on my machine is `mac2mqtt/bessarabov-osx/status/volume`, in this
-case the PREFIX if `mac2mqtt/bessarabov-osx`.
+## MQTT Topics Reference
 
-`mac2mqtt` send info to the topics `mac2mqtt/COMPUTER_NAME/status/#` and listen for commands in topics
-`mac2mqtt/COMPUTER_NAME/command/#`.
+All topics use the format: `mac2mqtt/COMPUTER_NAME/status/#` or `mac2mqtt/COMPUTER_NAME/command/#`
 
-### Status MQTT topics
+The `COMPUTER_NAME` is automatically derived from your macOS hostname.
 
-`mac2mqtt` is sending data to those topics.
+### Status Topics
 
-#### PREFIX + `/status/alive`
+mac2mqtt publishes to these topics:
 
-There can be `true` of `false` in this topic. If `mac2mqtt` is connected to MQTT server there is `true`.
-If `mac2mqtt` is disconnected from MQTT there is `false`. This is the standard MQTT thing called Last Will and Testament.
+#### `mac2mqtt/COMPUTER_NAME/status/alive`
 
-#### PREFIX + `/status/volume`
+**Values:** `true` or `false`
 
-The value is the numbers from 0 (inclusive) to 100 (inclusive). The current volume of computer.
+Indicates connection status using MQTT Last Will and Testament:
+* `true` - mac2mqtt is connected to the MQTT broker
+* `false` - mac2mqtt is disconnected
 
-The value of this topic is updated every 2 seconds.
+#### `mac2mqtt/COMPUTER_NAME/status/volume`
 
-#### PREFIX + `/status/mute`
+**Values:** `0` to `100`
 
-There can be `true` of `false` in this topic. `true` means that the computer volume is muted (no sound),
-`false` means that it is not multed.
+Current volume level of the computer.
 
-#### PREFIX + `/status/battery`
+**Update frequency:** Every 2 seconds
 
-The value is the nuber up to 100. The charge percent of the battery.
+#### `mac2mqtt/COMPUTER_NAME/status/mute`
 
-The value of this topic is updated every 60 seconds.
+**Values:** `true` or `false`
 
-### Control MQTT topics
+Mute status:
+* `true` - Computer is muted (no sound)
+* `false` - Computer is not muted
 
-`mac2mqtt` is listening for those topics and executes the actions.
+**Update frequency:** Every 2 seconds
 
-#### PREFIX + `/command/volume`
+#### `mac2mqtt/COMPUTER_NAME/status/battery`
 
-You can send integer numberf from 0 (inclusive) to 100 (inclusive) to this topic. It will set the volume on the computer.
+**Values:** `0` to `100`
 
-#### PREFIX + `/command/mute`
+Battery charge percentage.
 
-You can send `true` of `false` to this topic. When you send `true` the computer is muted. When you send `false` the computer
-is unmuted.
+**Update frequency:** Every 60 seconds
 
-#### PREFIX + `/command/sleep`
+### Command Topics
 
-You can send string `sleep` to this topic. It will put computer to sleep mode. Sending some other value will do nothing.
+Send messages to these topics to control your Mac:
 
-#### PREFIX + `/command/shutdown`
+#### `mac2mqtt/COMPUTER_NAME/command/volume`
 
-You can send string `shutdown` to this topic. It will try to shutdown the computer. The way it is done depends on
-the user who run the program. If the program is run by `root` the computer will shutdown, but if it is run by ordinary user
-the computer will not shut down if there is other user who logged in.
+**Values:** `0` to `100`
 
-Sending some other value but `shutdown` will do nothing.
+Set the computer volume level.
 
-#### PREFIX + `/command/displaysleep`
+**Example:**
+```bash
+mosquitto_pub -t "mac2mqtt/your-mac/command/volume" -m "50"
+```
 
-You can send string `displaysleep` to this topic. It will turn off display. Sending some other value will do nothing.
+#### `mac2mqtt/COMPUTER_NAME/command/mute`
+
+**Values:** `true` or `false`
+
+Control mute state:
+* `true` - Mute the computer
+* `false` - Unmute the computer
+
+**Example:**
+```bash
+mosquitto_pub -t "mac2mqtt/your-mac/command/mute" -m "true"
+```
+
+#### `mac2mqtt/COMPUTER_NAME/command/sleep`
+
+**Value:** `sleep`
+
+Put the computer into sleep mode.
+
+**Example:**
+```bash
+mosquitto_pub -t "mac2mqtt/your-mac/command/sleep" -m "sleep"
+```
+
+#### `mac2mqtt/COMPUTER_NAME/command/shutdown`
+
+**Value:** `shutdown`
+
+Shut down the computer.
+
+**Behavior:**
+* If run as `root` - Always shuts down
+* If run as regular user - May fail if other users are logged in
+
+**Example:**
+```bash
+mosquitto_pub -t "mac2mqtt/your-mac/command/shutdown" -m "shutdown"
+```
+
+#### `mac2mqtt/COMPUTER_NAME/command/displaysleep`
+
+**Value:** `displaysleep`
+
+Turn off the display.
+
+**Example:**
+```bash
+mosquitto_pub -t "mac2mqtt/your-mac/command/displaysleep" -m "displaysleep"
+```
+
+## Troubleshooting
+
+### Connection Issues
+
+If mac2mqtt cannot connect to MQTT:
+
+1. Verify your MQTT broker is running
+2. Check `mac2mqtt.yaml` settings (IP, port, credentials)
+3. Test connectivity: `ping YOUR_MQTT_IP`
+4. Verify firewall settings allow MQTT traffic (default port 1883)
+
+### Permission Issues
+
+If commands don't work:
+
+1. Ensure Terminal/mac2mqtt has accessibility permissions
+2. Go to System Settings > Privacy & Security > Accessibility
+3. Add Terminal or the mac2mqtt binary to the allowed list
+
+### Finding Your Computer Name
+
+To see the exact topic prefix mac2mqtt will use:
+
+```bash
+hostname | cut -d. -f1 | tr -cd 'a-zA-Z0-9_-'
+```
+
+## License
+
+MIT
+
+## Author
+
+Created by [Ivan Bessarabov](https://github.com/bessarabov)
