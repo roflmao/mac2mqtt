@@ -316,7 +316,7 @@ func publishConfig(client mqtt.Client, component, objectId string, config map[st
 		return
 	}
 
-	token := client.Publish(topic, 0, true, payload)
+	token := publishMQTT(client, topic, 0, true, payload)
 	token.Wait()
 	if token.Error() != nil {
 		log.Printf("Error publishing discovery for %s: %v", objectId, token.Error())
