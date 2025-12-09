@@ -15,19 +15,36 @@ The following information is published to MQTT:
 
 ### Remote Control
 
-Send commands via MQTT to:
+Send commands via MQTT to control your Mac:
 
-* Set volume level
-* Mute/unmute audio
-* Put computer to sleep
-* Shut down computer
-* Turn off display
+| Command | Topic | Accepted Values | Description |
+|---------|-------|-----------------|-------------|
+| **Set Volume** | `mac2mqtt/HOSTNAME/command/volume` | `0` - `100` | Set system volume level |
+| **Mute/Unmute** | `mac2mqtt/HOSTNAME/command/mute` | `true` / `false` | Mute or unmute system audio |
+| **Sleep** | `mac2mqtt/HOSTNAME/command/sleep` | `sleep` | Put computer to sleep |
+| **Shutdown** | `mac2mqtt/HOSTNAME/command/shutdown` | `shutdown` | Shut down computer |
+| **Display Sleep** | `mac2mqtt/HOSTNAME/command/displaysleep` | `displaysleep` | Turn off display only |
 
 ### Home Assistant Integration
 
 * **MQTT Auto Discovery** - Automatically creates all entities in Home Assistant
 * **Device grouping** - All controls grouped under one device
 * **Availability tracking** - Shows online/offline status
+
+## Available Metrics
+
+mac2mqtt publishes the following metrics to MQTT:
+
+| Metric | Topic | Values | Update Frequency | Description |
+|--------|-------|--------|------------------|-------------|
+| **Connection Status** | `mac2mqtt/HOSTNAME/status/alive` | `true` / `false` | On connect/disconnect | Indicates if mac2mqtt is connected to MQTT broker (uses Last Will and Testament) |
+| **Volume Level** | `mac2mqtt/HOSTNAME/status/volume` | `0` - `100` | Every 2 seconds | Current system volume level as percentage |
+| **Mute Status** | `mac2mqtt/HOSTNAME/status/mute` | `true` / `false` | Every 2 seconds | Whether system audio is muted |
+| **Battery Charge** | `mac2mqtt/HOSTNAME/status/battery` | `0` - `100` | Every 60 seconds | Battery charge percentage (laptops only) |
+
+**Note:** `HOSTNAME` is automatically derived from your macOS computer's hostname (e.g., `bessarabov-osx`).
+
+All metrics are published immediately upon connection and then updated according to their schedules.
 
 ## Requirements
 
