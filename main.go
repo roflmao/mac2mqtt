@@ -431,7 +431,14 @@ func publishMQTT(client mqtt.Client, topic string, qos byte, retained bool, payl
 		if dryRunMode {
 			prefix = "[DRY-RUN]"
 		}
-		log.Printf("%s Publishing to topic '%s': %v (QoS=%d, Retained=%v)", prefix, topic, payload, qos, retained)
+
+		// Convert byte arrays to strings for better readability
+		displayPayload := payload
+		if bytePayload, ok := payload.([]byte); ok {
+			displayPayload = string(bytePayload)
+		}
+
+		log.Printf("%s Publishing to topic '%s': %v (QoS=%d, Retained=%v)", prefix, topic, displayPayload, qos, retained)
 	}
 
 	if dryRunMode {
