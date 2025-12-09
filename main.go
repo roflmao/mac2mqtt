@@ -19,6 +19,7 @@ import (
 
 var hostname string
 var debugMode bool
+var dryRunMode bool
 
 type config struct {
 	Ip       string `yaml:"mqtt_ip"`
@@ -26,6 +27,7 @@ type config struct {
 	User     string `yaml:"mqtt_user"`
 	Password string `yaml:"mqtt_password"`
 	Debug    bool   `yaml:"debug"`
+	DryRun   bool   `yaml:"dry_run"`
 }
 
 func (c *config) getConfig() *config {
@@ -40,16 +42,24 @@ func (c *config) getConfig() *config {
 		log.Fatal(err)
 	}
 
-	if c.Ip == "" {
-		log.Fatal("Must specify mqtt_ip in mac2mqtt.yaml")
-	}
-
-	if c.Port == "" {
-		log.Fatal("Must specify mqtt_port in mac2mqtt.yaml")
-	}
-
-	// Set global debug mode
+	// Set global modes
 	debugMode = c.Debug
+	dryRunMode = c.DryRun
+
+	if dryRunMode {
+		log.Println("DRY RUN MODE ENABLED - No actual MQTT connection will be made")
+	}
+
+	// Only validate MQTT settings if not in dry run mode
+	if !dryRunMode {
+		if c.Ip == "" {
+			log.Fatal("Must specify mqtt_ip in mac2mqtt.yaml")
+		}
+
+		if c.Port == "" {
+			log.Fatal("Must specify mqtt_port in mac2mqtt.yaml")
+		}
+	}
 
 	return c
 }
@@ -311,6 +321,11 @@ var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	// Publish Home Assistant discovery messages
 	publishDiscoveryMessages(client)
 
+	// Publish initial metrics
+	updateVolume(client)
+	updateMute(client)
+	updateBattery(client)
+
 	listen(client, getTopicPrefix()+"/command/#")
 }
 
@@ -319,6 +334,14 @@ var connectLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err
 }
 
 func getMQTTClient(ip, port, user, password string) mqtt.Client {
+	// In dry-run mode, skip actual MQTT connection
+	if dryRunMode {
+		log.Println("Dry-run mode: Simulating MQTT connection")
+		client := &dummyClient{}
+		// Manually trigger the connect handler to simulate connection
+		connectHandler(client)
+		return client
+	}
 
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%s:%s", ip, port))
@@ -389,11 +412,55 @@ func getTopicPrefix() string {
 
 // publishMQTT publishes a message to MQTT with optional debug logging
 func publishMQTT(client mqtt.Client, topic string, qos byte, retained bool, payload interface{}) mqtt.Token {
-	if debugMode {
-		log.Printf("[DEBUG] Publishing to topic '%s': %v (QoS=%d, Retained=%v)", topic, payload, qos, retained)
+	if dryRunMode || debugMode {
+		prefix := "[DEBUG]"
+		if dryRunMode {
+			prefix = "[DRY-RUN]"
+		}
+		log.Printf("%s Publishing to topic '%s': %v (QoS=%d, Retained=%v)", prefix, topic, payload, qos, retained)
 	}
+
+	if dryRunMode {
+		// Return a dummy token that does nothing
+		return &dummyToken{}
+	}
+
 	token := client.Publish(topic, qos, retained, payload)
 	return token
+}
+
+// dummyToken is a no-op token for dry-run mode
+type dummyToken struct{}
+
+func (t *dummyToken) Wait() bool                { return true }
+func (t *dummyToken) WaitTimeout(time.Duration) bool { return true }
+func (t *dummyToken) Done() <-chan struct{} {
+	ch := make(chan struct{})
+	close(ch)
+	return ch
+}
+func (t *dummyToken) Error() error { return nil }
+
+// dummyClient is a no-op MQTT client for dry-run mode
+type dummyClient struct{}
+
+func (c *dummyClient) IsConnected() bool         { return true }
+func (c *dummyClient) IsConnectionOpen() bool    { return true }
+func (c *dummyClient) Connect() mqtt.Token       { return &dummyToken{} }
+func (c *dummyClient) Disconnect(quiesce uint)   {}
+func (c *dummyClient) Publish(topic string, qos byte, retained bool, payload interface{}) mqtt.Token {
+	return &dummyToken{}
+}
+func (c *dummyClient) Subscribe(topic string, qos byte, callback mqtt.MessageHandler) mqtt.Token {
+	return &dummyToken{}
+}
+func (c *dummyClient) SubscribeMultiple(filters map[string]byte, callback mqtt.MessageHandler) mqtt.Token {
+	return &dummyToken{}
+}
+func (c *dummyClient) Unsubscribe(topics ...string) mqtt.Token { return &dummyToken{} }
+func (c *dummyClient) AddRoute(topic string, callback mqtt.MessageHandler) {}
+func (c *dummyClient) OptionsReader() mqtt.ClientOptionsReader {
+	return mqtt.ClientOptionsReader{}
 }
 
 func listen(client mqtt.Client, topic string) {
