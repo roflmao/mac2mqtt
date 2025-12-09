@@ -86,9 +86,26 @@ mqtt_ip: 192.168.1.123
 mqtt_port: 1883
 mqtt_user: your_username
 mqtt_password: your_password
+
+# Debug mode - logs all MQTT publishes (optional, default: false)
+debug: false
 ```
 
 2. Edit the values to match your MQTT broker settings
+
+### Configuration Options
+
+* **mqtt_ip** (required) - IP address of your MQTT broker
+* **mqtt_port** (required) - Port of your MQTT broker (usually 1883)
+* **mqtt_user** (optional) - Username for MQTT authentication
+* **mqtt_password** (optional) - Password for MQTT authentication
+* **debug** (optional) - Enable debug logging to see all MQTT messages being published (default: false)
+
+When `debug: true`, you'll see detailed logs like:
+```
+[DEBUG] Publishing to topic 'mac2mqtt/your-mac/status/volume': 50 (QoS=0, Retained=false)
+[DEBUG] Publishing to topic 'mac2mqtt/your-mac/status/mute': false (QoS=0, Retained=false)
+```
 
 ## Running
 

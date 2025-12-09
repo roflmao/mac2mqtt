@@ -17,12 +17,14 @@ import (
 )
 
 var hostname string
+var debugMode bool
 
 type config struct {
 	Ip       string `yaml:"mqtt_ip"`
 	Port     string `yaml:"mqtt_port"`
 	User     string `yaml:"mqtt_user"`
 	Password string `yaml:"mqtt_password"`
+	Debug    bool   `yaml:"debug"`
 }
 
 func (c *config) getConfig() *config {
@@ -45,13 +47,8 @@ func (c *config) getConfig() *config {
 		log.Fatal("Must specify mqtt_port in mac2mqtt.yaml")
 	}
 
-	if c.User == "" {
-		log.Fatal("Must specify mqtt_user in mac2mqtt.yaml")
-	}
-
-	if c.Password == "" {
-		log.Fatal("Must specify mqtt_password in mac2mqtt.yaml")
-	}
+	// Set global debug mode
+	debugMode = c.Debug
 
 	return c
 }
@@ -160,7 +157,7 @@ var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Me
 var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	log.Println("Connected to MQTT")
 
-	token := client.Publish(getTopicPrefix()+"/status/alive", 0, true, "true")
+	token := publishMQTT(client, getTopicPrefix()+"/status/alive", 0, true, "true")
 	token.Wait()
 
 	log.Println("Sending 'true' to topic: " + getTopicPrefix() + "/status/alive")
@@ -193,6 +190,15 @@ func getMQTTClient(ip, port, user, password string) mqtt.Client {
 
 func getTopicPrefix() string {
 	return "mac2mqtt/" + hostname
+}
+
+// publishMQTT publishes a message to MQTT with optional debug logging
+func publishMQTT(client mqtt.Client, topic string, qos byte, retained bool, payload interface{}) mqtt.Token {
+	if debugMode {
+		log.Printf("[DEBUG] Publishing to topic '%s': %v (QoS=%d, Retained=%v)", topic, payload, qos, retained)
+	}
+	token := client.Publish(topic, qos, retained, payload)
+	return token
 }
 
 func listen(client mqtt.Client, topic string) {
@@ -263,12 +269,12 @@ func listen(client mqtt.Client, topic string) {
 }
 
 func updateVolume(client mqtt.Client) {
-	token := client.Publish(getTopicPrefix()+"/status/volume", 0, false, strconv.Itoa(getCurrentVolume()))
+	token := publishMQTT(client, getTopicPrefix()+"/status/volume", 0, false, strconv.Itoa(getCurrentVolume()))
 	token.Wait()
 }
 
 func updateMute(client mqtt.Client) {
-	token := client.Publish(getTopicPrefix()+"/status/mute", 0, false, strconv.FormatBool(getMuteStatus()))
+	token := publishMQTT(client, getTopicPrefix()+"/status/mute", 0, false, strconv.FormatBool(getMuteStatus()))
 	token.Wait()
 }
 
@@ -287,7 +293,7 @@ func getBatteryChargePercent() string {
 }
 
 func updateBattery(client mqtt.Client) {
-	token := client.Publish(getTopicPrefix()+"/status/battery", 0, false, getBatteryChargePercent())
+	token := publishMQTT(client, getTopicPrefix()+"/status/battery", 0, false, getBatteryChargePercent())
 	token.Wait()
 }
 
