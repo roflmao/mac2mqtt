@@ -23,6 +23,12 @@ Send commands via MQTT to:
 * Shut down computer
 * Turn off display
 
+### Home Assistant Integration
+
+* **MQTT Auto Discovery** - Automatically creates all entities in Home Assistant
+* **Device grouping** - All controls grouped under one device
+* **Availability tracking** - Shows online/offline status
+
 ## Requirements
 
 * macOS (any version with `osascript` and `pmset` support)
@@ -161,9 +167,37 @@ sudo launchctl unload /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 
 ## Home Assistant Integration
 
+### MQTT Auto Discovery
+
+mac2mqtt supports Home Assistant's MQTT discovery feature. When mac2mqtt connects to your MQTT broker, it automatically publishes discovery messages that Home Assistant will detect.
+
+**Automatically discovered entities:**
+
+* Binary Sensor - Connection status
+* Sensor - Battery percentage
+* Sensor - Volume level (read-only)
+* Switch - Mute/Unmute
+* Number - Volume control (0-100)
+* Button - Sleep
+* Button - Shutdown
+* Button - Display Sleep
+
+All entities are grouped under a single device in Home Assistant using your computer's hostname.
+
+**No manual configuration required!** Simply ensure:
+1. MQTT integration is enabled in Home Assistant
+2. MQTT discovery is enabled (it's on by default)
+3. mac2mqtt is running and connected to your MQTT broker
+
+The entities will automatically appear in Home Assistant and can be added to your dashboard.
+
 ![Home Assistant Example](https://user-images.githubusercontent.com/47263/114361105-753c4200-9b7e-11eb-833c-c26a2b7d0e00.png)
 
-### configuration.yaml
+### Manual Configuration (Optional)
+
+If you prefer manual configuration or need custom scripts, you can still configure entities manually:
+
+#### configuration.yaml
 
 ```yaml
 script:

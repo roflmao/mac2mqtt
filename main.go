@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -157,6 +158,151 @@ var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Me
 	log.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
 }
 
+func publishDiscoveryMessages(client mqtt.Client) {
+	prefix := getTopicPrefix()
+
+	// Device information shared across all entities
+	device := map[string]interface{}{
+		"identifiers":  []string{"mac2mqtt_" + hostname},
+		"name":         hostname,
+		"model":        "macOS Computer",
+		"manufacturer": "Apple",
+		"sw_version":   "mac2mqtt",
+	}
+
+	// Binary sensor for alive status
+	aliveConfig := map[string]interface{}{
+		"name":              hostname + " Status",
+		"unique_id":         "mac2mqtt_" + hostname + "_alive",
+		"state_topic":       prefix + "/status/alive",
+		"payload_on":        "true",
+		"payload_off":       "false",
+		"device_class":      "connectivity",
+		"device":            device,
+	}
+	publishConfig(client, "binary_sensor", hostname+"_alive", aliveConfig)
+
+	// Sensor for battery
+	batteryConfig := map[string]interface{}{
+		"name":              hostname + " Battery",
+		"unique_id":         "mac2mqtt_" + hostname + "_battery",
+		"state_topic":       prefix + "/status/battery",
+		"unit_of_measurement": "%",
+		"device_class":      "battery",
+		"availability_topic": prefix + "/status/alive",
+		"payload_available":  "true",
+		"payload_not_available": "false",
+		"device":            device,
+	}
+	publishConfig(client, "sensor", hostname+"_battery", batteryConfig)
+
+	// Sensor for volume (read-only)
+	volumeSensorConfig := map[string]interface{}{
+		"name":              hostname + " Volume Level",
+		"unique_id":         "mac2mqtt_" + hostname + "_volume_sensor",
+		"state_topic":       prefix + "/status/volume",
+		"unit_of_measurement": "%",
+		"icon":              "mdi:volume-high",
+		"availability_topic": prefix + "/status/alive",
+		"payload_available":  "true",
+		"payload_not_available": "false",
+		"device":            device,
+	}
+	publishConfig(client, "sensor", hostname+"_volume_sensor", volumeSensorConfig)
+
+	// Switch for mute
+	muteConfig := map[string]interface{}{
+		"name":              hostname + " Mute",
+		"unique_id":         "mac2mqtt_" + hostname + "_mute",
+		"state_topic":       prefix + "/status/mute",
+		"command_topic":     prefix + "/command/mute",
+		"payload_on":        "true",
+		"payload_off":       "false",
+		"icon":              "mdi:volume-mute",
+		"availability_topic": prefix + "/status/alive",
+		"payload_available":  "true",
+		"payload_not_available": "false",
+		"device":            device,
+	}
+	publishConfig(client, "switch", hostname+"_mute", muteConfig)
+
+	// Number for volume control
+	volumeConfig := map[string]interface{}{
+		"name":              hostname + " Volume",
+		"unique_id":         "mac2mqtt_" + hostname + "_volume",
+		"state_topic":       prefix + "/status/volume",
+		"command_topic":     prefix + "/command/volume",
+		"min":               0,
+		"max":               100,
+		"step":              1,
+		"icon":              "mdi:volume-medium",
+		"availability_topic": prefix + "/status/alive",
+		"payload_available":  "true",
+		"payload_not_available": "false",
+		"device":            device,
+	}
+	publishConfig(client, "number", hostname+"_volume", volumeConfig)
+
+	// Button for sleep
+	sleepConfig := map[string]interface{}{
+		"name":              hostname + " Sleep",
+		"unique_id":         "mac2mqtt_" + hostname + "_sleep",
+		"command_topic":     prefix + "/command/sleep",
+		"payload_press":     "sleep",
+		"icon":              "mdi:power-sleep",
+		"availability_topic": prefix + "/status/alive",
+		"payload_available":  "true",
+		"payload_not_available": "false",
+		"device":            device,
+	}
+	publishConfig(client, "button", hostname+"_sleep", sleepConfig)
+
+	// Button for shutdown
+	shutdownConfig := map[string]interface{}{
+		"name":              hostname + " Shutdown",
+		"unique_id":         "mac2mqtt_" + hostname + "_shutdown",
+		"command_topic":     prefix + "/command/shutdown",
+		"payload_press":     "shutdown",
+		"icon":              "mdi:power",
+		"availability_topic": prefix + "/status/alive",
+		"payload_available":  "true",
+		"payload_not_available": "false",
+		"device":            device,
+	}
+	publishConfig(client, "button", hostname+"_shutdown", shutdownConfig)
+
+	// Button for display sleep
+	displaysleepConfig := map[string]interface{}{
+		"name":              hostname + " Display Sleep",
+		"unique_id":         "mac2mqtt_" + hostname + "_displaysleep",
+		"command_topic":     prefix + "/command/displaysleep",
+		"payload_press":     "displaysleep",
+		"icon":              "mdi:monitor-off",
+		"availability_topic": prefix + "/status/alive",
+		"payload_available":  "true",
+		"payload_not_available": "false",
+		"device":            device,
+	}
+	publishConfig(client, "button", hostname+"_displaysleep", displaysleepConfig)
+
+	log.Println("Published Home Assistant MQTT discovery messages")
+}
+
+func publishConfig(client mqtt.Client, component, objectId string, config map[string]interface{}) {
+	topic := fmt.Sprintf("homeassistant/%s/mac2mqtt_%s/%s/config", component, hostname, objectId)
+	payload, err := json.Marshal(config)
+	if err != nil {
+		log.Printf("Error marshaling config for %s: %v", objectId, err)
+		return
+	}
+
+	token := client.Publish(topic, 0, true, payload)
+	token.Wait()
+	if token.Error() != nil {
+		log.Printf("Error publishing discovery for %s: %v", objectId, token.Error())
+	}
+}
+
 var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	log.Println("Connected to MQTT")
 
@@ -164,6 +310,9 @@ var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	token.Wait()
 
 	log.Println("Sending 'true' to topic: " + getTopicPrefix() + "/status/alive")
+
+	// Publish Home Assistant discovery messages
+	publishDiscoveryMessages(client)
 
 	listen(client, getTopicPrefix()+"/command/#")
 }
