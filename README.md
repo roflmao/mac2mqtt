@@ -95,22 +95,46 @@ mqtt_password: your_password
 
 # Debug mode - logs all MQTT publishes (optional, default: false)
 debug: false
+
+# Dry-run mode - simulates MQTT without actual connection (optional, default: false)
+# Useful for testing without a real MQTT broker
+dry_run: false
 ```
 
 2. Edit the values to match your MQTT broker settings
 
 ### Configuration Options
 
-* **mqtt_ip** (required) - IP address of your MQTT broker
-* **mqtt_port** (required) - Port of your MQTT broker (usually 1883)
+* **mqtt_ip** (required*) - IP address of your MQTT broker (*not required in dry-run mode)
+* **mqtt_port** (required*) - Port of your MQTT broker, usually 1883 (*not required in dry-run mode)
 * **mqtt_user** (optional) - Username for MQTT authentication
 * **mqtt_password** (optional) - Password for MQTT authentication
 * **debug** (optional) - Enable debug logging to see all MQTT messages being published (default: false)
+* **dry_run** (optional) - Test mode that simulates MQTT without connecting to a real broker (default: false)
+
+#### Debug Mode
 
 When `debug: true`, you'll see detailed logs like:
 ```
 [DEBUG] Publishing to topic 'mac2mqtt/your-mac/status/volume': 50 (QoS=0, Retained=false)
 [DEBUG] Publishing to topic 'mac2mqtt/your-mac/status/mute': false (QoS=0, Retained=false)
+```
+
+#### Dry-Run Mode
+
+When `dry_run: true`, mac2mqtt will simulate all operations without connecting to an actual MQTT broker. This is useful for:
+- Testing configuration without an MQTT server
+- Seeing what topics and payloads would be published
+- Development and debugging
+
+In dry-run mode, you'll see logs like:
+```
+DRY RUN MODE ENABLED - No actual MQTT connection will be made
+Dry-run mode: Simulating MQTT connection
+Connected to MQTT
+[DRY-RUN] Publishing to topic 'mac2mqtt/your-mac/status/alive': true (QoS=0, Retained=true)
+[DRY-RUN] Publishing to topic 'homeassistant/binary_sensor/mac2mqtt_your-mac/your-mac_alive/config': {...}
+[DRY-RUN] Publishing to topic 'mac2mqtt/your-mac/status/volume': 50 (QoS=0, Retained=false)
 ```
 
 ## Running
