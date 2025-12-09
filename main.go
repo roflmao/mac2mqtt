@@ -293,7 +293,7 @@ func publishConfig(client mqtt.Client, component, objectId string, config map[st
 		return
 	}
 
-	token := client.Publish(topic, 0, true, payload)
+	token := publishMQTT(client, topic, 0, true, payload)
 	token.Wait()
 	if token.Error() != nil {
 		log.Printf("Error publishing discovery for %s: %v", objectId, token.Error())
@@ -310,6 +310,11 @@ var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 
 	// Publish Home Assistant discovery messages
 	publishDiscoveryMessages(client)
+
+	// Publish initial metrics
+	updateVolume(client)
+	updateMute(client)
+	updateBattery(client)
 
 	listen(client, getTopicPrefix()+"/command/#")
 }
