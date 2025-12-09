@@ -183,12 +183,58 @@ func getMQTTClient(ip, port, user, password string) mqtt.Client {
 
 	opts.SetWill(getTopicPrefix()+"/status/alive", "false", 0, true)
 
+	// Enable automatic reconnection
+	opts.SetAutoReconnect(true)
+	opts.SetMaxReconnectInterval(60 * time.Second)
+	opts.SetConnectRetryInterval(5 * time.Second)
+	opts.SetConnectRetry(true)
+
 	client := mqtt.NewClient(opts)
-	if token := client.Connect(); token.Wait() && token.Error() != nil {
-		panic(token.Error())
+
+	// Retry initial connection with exponential backoff
+	maxRetries := 10
+	retryDelay := 2 * time.Second
+	maxRetryDelay := 60 * time.Second
+
+	for i := 0; i < maxRetries; i++ {
+		log.Printf("Attempting to connect to MQTT broker at %s:%s (attempt %d/%d)", ip, port, i+1, maxRetries)
+
+		token := client.Connect()
+		token.Wait()
+
+		if token.Error() == nil {
+			log.Println("Successfully connected to MQTT broker")
+			return client
+		}
+
+		log.Printf("Failed to connect to MQTT: %v", token.Error())
+
+		if i < maxRetries-1 {
+			log.Printf("Retrying in %v...", retryDelay)
+			time.Sleep(retryDelay)
+
+			// Exponential backoff
+			retryDelay *= 2
+			if retryDelay > maxRetryDelay {
+				retryDelay = maxRetryDelay
+			}
+		}
 	}
 
-	return client
+	// If all retries failed, keep trying indefinitely with max delay
+	log.Printf("Initial connection attempts failed. Will keep trying every %v...", maxRetryDelay)
+	for {
+		token := client.Connect()
+		token.Wait()
+
+		if token.Error() == nil {
+			log.Println("Successfully connected to MQTT broker")
+			return client
+		}
+
+		log.Printf("Failed to connect to MQTT: %v. Retrying in %v...", token.Error(), maxRetryDelay)
+		time.Sleep(maxRetryDelay)
+	}
 }
 
 func getTopicPrefix() string {
