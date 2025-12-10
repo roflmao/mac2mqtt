@@ -634,6 +634,8 @@ func updateActiveApp(client mqtt.Client) {
 	token.Wait()
 }
 
+var ssidWarningOnce sync.Once
+
 func getWiFiSSID() string {
 	// Prefer networksetup (works even when airport binary is missing on newer macOS)
 	if ssid, ok := getSSIDFromNetworksetup(); ok {
@@ -658,6 +660,11 @@ func getWiFiSSID() string {
 	if len(matches) > 1 {
 		return matches[1]
 	}
+
+	// Log a one-time informational message about SSID restrictions on modern macOS
+	ssidWarningOnce.Do(func() {
+		log.Println("Note: Wi-Fi SSID unavailable. Modern macOS versions require Location Services permission to access SSID. Signal strength and IP address will continue to work.")
+	})
 
 	return "Not Connected"
 }
@@ -730,10 +737,12 @@ func getAirportInfo() string {
 }
 
 func getSSIDFromNetworksetup() (string, bool) {
-	for _, iface := range wifiInterfaceCandidates() {
+	candidates := wifiInterfaceCandidates()
+	for i, iface := range candidates {
 		cmd := exec.Command("/usr/sbin/networksetup", "-getairportnetwork", iface)
 		stdout, err := cmd.CombinedOutput()
-		if err != nil && debugMode {
+		// Only log warnings for the primary interface (first candidate)
+		if err != nil && debugMode && i == 0 {
 			log.Printf("Warning: networksetup -getairportnetwork %s failed: %v", iface, err)
 		}
 
@@ -815,11 +824,13 @@ if let iface = CWWiFiClient.shared().interface() {
 }
 
 func getSSIDFromIpconfig() (string, bool) {
-	for _, iface := range wifiInterfaceCandidates() {
+	candidates := wifiInterfaceCandidates()
+	for i, iface := range candidates {
 		cmd := exec.Command("/usr/sbin/ipconfig", "getsummary", iface)
 		stdout, err := cmd.CombinedOutput()
 		if err != nil {
-			if debugMode {
+			// Only log warnings for the primary interface (first candidate)
+			if debugMode && i == 0 {
 				log.Printf("Warning: ipconfig getsummary %s failed: %v", iface, err)
 			}
 			continue
