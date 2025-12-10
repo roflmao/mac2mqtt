@@ -26,8 +26,27 @@ jobs:
       - name: Generate version tag
         id: version
         run: |
-          # Use date-based versioning with commit SHA
-          VERSION="v$(date -u +'%Y.%m.%d')-$(git rev-parse --short HEAD)"
+          # Get the latest tag matching v*.*.* pattern
+          LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -n1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            # No existing tags, start with v1.0.0
+            VERSION="v1.0.0"
+          else
+            # Parse the version and increment patch number
+            echo "Latest tag: $LATEST_TAG"
+
+            # Remove 'v' prefix and split into major.minor.patch
+            VERSION_NUM="${LATEST_TAG#v}"
+            MAJOR=$(echo $VERSION_NUM | cut -d. -f1)
+            MINOR=$(echo $VERSION_NUM | cut -d. -f2)
+            PATCH=$(echo $VERSION_NUM | cut -d. -f3)
+
+            # Increment patch version
+            PATCH=$((PATCH + 1))
+            VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          fi
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Generated version: $VERSION"
 
