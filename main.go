@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -179,131 +180,171 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Binary sensor for alive status
 	aliveConfig := map[string]interface{}{
-		"name":              hostname + " Status",
-		"unique_id":         "mac2mqtt_" + hostname + "_alive",
-		"state_topic":       prefix + "/status/alive",
-		"payload_on":        "true",
-		"payload_off":       "false",
-		"device_class":      "connectivity",
-		"device":            device,
+		"name":         hostname + " Status",
+		"unique_id":    "mac2mqtt_" + hostname + "_alive",
+		"state_topic":  prefix + "/status/alive",
+		"payload_on":   "true",
+		"payload_off":  "false",
+		"device_class": "connectivity",
+		"device":       device,
 	}
 	publishConfig(client, "binary_sensor", hostname+"_alive", aliveConfig)
 
 	// Sensor for battery
 	batteryConfig := map[string]interface{}{
-		"name":              hostname + " Battery",
-		"unique_id":         "mac2mqtt_" + hostname + "_battery",
-		"state_topic":       prefix + "/status/battery",
-		"unit_of_measurement": "%",
-		"device_class":      "battery",
-		"availability_topic": prefix + "/status/alive",
-		"payload_available":  "true",
+		"name":                  hostname + " Battery",
+		"unique_id":             "mac2mqtt_" + hostname + "_battery",
+		"state_topic":           prefix + "/status/battery",
+		"unit_of_measurement":   "%",
+		"device_class":          "battery",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
 		"payload_not_available": "false",
-		"device":            device,
+		"device":                device,
 	}
 	publishConfig(client, "sensor", hostname+"_battery", batteryConfig)
 
 	// Sensor for volume (read-only)
 	volumeSensorConfig := map[string]interface{}{
-		"name":              hostname + " Volume Level",
-		"unique_id":         "mac2mqtt_" + hostname + "_volume_sensor",
-		"state_topic":       prefix + "/status/volume",
-		"unit_of_measurement": "%",
-		"icon":              "mdi:volume-high",
-		"availability_topic": prefix + "/status/alive",
-		"payload_available":  "true",
+		"name":                  hostname + " Volume Level",
+		"unique_id":             "mac2mqtt_" + hostname + "_volume_sensor",
+		"state_topic":           prefix + "/status/volume",
+		"unit_of_measurement":   "%",
+		"icon":                  "mdi:volume-high",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
 		"payload_not_available": "false",
-		"device":            device,
+		"device":                device,
 	}
 	publishConfig(client, "sensor", hostname+"_volume_sensor", volumeSensorConfig)
 
 	// Switch for mute
 	muteConfig := map[string]interface{}{
-		"name":              hostname + " Mute",
-		"unique_id":         "mac2mqtt_" + hostname + "_mute",
-		"state_topic":       prefix + "/status/mute",
-		"command_topic":     prefix + "/command/mute",
-		"payload_on":        "true",
-		"payload_off":       "false",
-		"icon":              "mdi:volume-mute",
-		"availability_topic": prefix + "/status/alive",
-		"payload_available":  "true",
+		"name":                  hostname + " Mute",
+		"unique_id":             "mac2mqtt_" + hostname + "_mute",
+		"state_topic":           prefix + "/status/mute",
+		"command_topic":         prefix + "/command/mute",
+		"payload_on":            "true",
+		"payload_off":           "false",
+		"icon":                  "mdi:volume-mute",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
 		"payload_not_available": "false",
-		"device":            device,
+		"device":                device,
 	}
 	publishConfig(client, "switch", hostname+"_mute", muteConfig)
 
 	// Number for volume control
 	volumeConfig := map[string]interface{}{
-		"name":              hostname + " Volume",
-		"unique_id":         "mac2mqtt_" + hostname + "_volume",
-		"state_topic":       prefix + "/status/volume",
-		"command_topic":     prefix + "/command/volume",
-		"min":               0,
-		"max":               100,
-		"step":              1,
-		"icon":              "mdi:volume-medium",
-		"availability_topic": prefix + "/status/alive",
-		"payload_available":  "true",
+		"name":                  hostname + " Volume",
+		"unique_id":             "mac2mqtt_" + hostname + "_volume",
+		"state_topic":           prefix + "/status/volume",
+		"command_topic":         prefix + "/command/volume",
+		"min":                   0,
+		"max":                   100,
+		"step":                  1,
+		"icon":                  "mdi:volume-medium",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
 		"payload_not_available": "false",
-		"device":            device,
+		"device":                device,
 	}
 	publishConfig(client, "number", hostname+"_volume", volumeConfig)
 
 	// Button for sleep
 	sleepConfig := map[string]interface{}{
-		"name":              hostname + " Sleep",
-		"unique_id":         "mac2mqtt_" + hostname + "_sleep",
-		"command_topic":     prefix + "/command/sleep",
-		"payload_press":     "sleep",
-		"icon":              "mdi:power-sleep",
-		"availability_topic": prefix + "/status/alive",
-		"payload_available":  "true",
+		"name":                  hostname + " Sleep",
+		"unique_id":             "mac2mqtt_" + hostname + "_sleep",
+		"command_topic":         prefix + "/command/sleep",
+		"payload_press":         "sleep",
+		"icon":                  "mdi:power-sleep",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
 		"payload_not_available": "false",
-		"device":            device,
+		"device":                device,
 	}
 	publishConfig(client, "button", hostname+"_sleep", sleepConfig)
 
 	// Button for shutdown
 	shutdownConfig := map[string]interface{}{
-		"name":              hostname + " Shutdown",
-		"unique_id":         "mac2mqtt_" + hostname + "_shutdown",
-		"command_topic":     prefix + "/command/shutdown",
-		"payload_press":     "shutdown",
-		"icon":              "mdi:power",
-		"availability_topic": prefix + "/status/alive",
-		"payload_available":  "true",
+		"name":                  hostname + " Shutdown",
+		"unique_id":             "mac2mqtt_" + hostname + "_shutdown",
+		"command_topic":         prefix + "/command/shutdown",
+		"payload_press":         "shutdown",
+		"icon":                  "mdi:power",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
 		"payload_not_available": "false",
-		"device":            device,
+		"device":                device,
 	}
 	publishConfig(client, "button", hostname+"_shutdown", shutdownConfig)
 
 	// Button for display sleep
 	displaysleepConfig := map[string]interface{}{
-		"name":              hostname + " Display Sleep",
-		"unique_id":         "mac2mqtt_" + hostname + "_displaysleep",
-		"command_topic":     prefix + "/command/displaysleep",
-		"payload_press":     "displaysleep",
-		"icon":              "mdi:monitor-off",
-		"availability_topic": prefix + "/status/alive",
-		"payload_available":  "true",
+		"name":                  hostname + " Display Sleep",
+		"unique_id":             "mac2mqtt_" + hostname + "_displaysleep",
+		"command_topic":         prefix + "/command/displaysleep",
+		"payload_press":         "displaysleep",
+		"icon":                  "mdi:monitor-off",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
 		"payload_not_available": "false",
-		"device":            device,
+		"device":                device,
 	}
 	publishConfig(client, "button", hostname+"_displaysleep", displaysleepConfig)
 
 	// Sensor for active application
 	activeAppConfig := map[string]interface{}{
-		"name":              hostname + " Active App",
-		"unique_id":         "mac2mqtt_" + hostname + "_active_app",
-		"state_topic":       prefix + "/status/active_app",
-		"icon":              "mdi:application",
-		"availability_topic": prefix + "/status/alive",
-		"payload_available":  "true",
+		"name":                  hostname + " Active App",
+		"unique_id":             "mac2mqtt_" + hostname + "_active_app",
+		"state_topic":           prefix + "/status/active_app",
+		"icon":                  "mdi:application",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
 		"payload_not_available": "false",
-		"device":            device,
+		"device":                device,
 	}
 	publishConfig(client, "sensor", hostname+"_active_app", activeAppConfig)
+
+	// Sensor for Wi-Fi SSID
+	wifiSSIDConfig := map[string]interface{}{
+		"name":                  hostname + " Wi-Fi SSID",
+		"unique_id":             "mac2mqtt_" + hostname + "_wifi_ssid",
+		"state_topic":           prefix + "/status/wifi_ssid",
+		"icon":                  "mdi:wifi",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "sensor", hostname+"_wifi_ssid", wifiSSIDConfig)
+
+	// Sensor for Wi-Fi Signal Strength (RSSI)
+	wifiSignalConfig := map[string]interface{}{
+		"name":                  hostname + " Wi-Fi Signal Strength",
+		"unique_id":             "mac2mqtt_" + hostname + "_wifi_signal_strength",
+		"state_topic":           prefix + "/status/wifi_signal_strength",
+		"unit_of_measurement":   "dBm",
+		"icon":                  "mdi:wifi-strength-2",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "sensor", hostname+"_wifi_signal_strength", wifiSignalConfig)
+
+	// Sensor for Wi-Fi IP Address
+	wifiIPConfig := map[string]interface{}{
+		"name":                  hostname + " Wi-Fi IP",
+		"unique_id":             "mac2mqtt_" + hostname + "_wifi_ip",
+		"state_topic":           prefix + "/status/wifi_ip",
+		"icon":                  "mdi:ip-network",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "sensor", hostname+"_wifi_ip", wifiIPConfig)
 
 	log.Println("Published Home Assistant MQTT discovery messages")
 }
@@ -339,6 +380,9 @@ var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	updateMute(client)
 	updateBattery(client)
 	updateActiveApp(client)
+	updateWiFiSSID(client)
+	updateWiFiSignalStrength(client)
+	updateWiFiIPAddress(client)
 
 	listen(client, getTopicPrefix()+"/command/#")
 }
@@ -453,7 +497,7 @@ func publishMQTT(client mqtt.Client, topic string, qos byte, retained bool, payl
 // dummyToken is a no-op token for dry-run mode
 type dummyToken struct{}
 
-func (t *dummyToken) Wait() bool                { return true }
+func (t *dummyToken) Wait() bool                     { return true }
 func (t *dummyToken) WaitTimeout(time.Duration) bool { return true }
 func (t *dummyToken) Done() <-chan struct{} {
 	ch := make(chan struct{})
@@ -465,10 +509,10 @@ func (t *dummyToken) Error() error { return nil }
 // dummyClient is a no-op MQTT client for dry-run mode
 type dummyClient struct{}
 
-func (c *dummyClient) IsConnected() bool         { return true }
-func (c *dummyClient) IsConnectionOpen() bool    { return true }
-func (c *dummyClient) Connect() mqtt.Token       { return &dummyToken{} }
-func (c *dummyClient) Disconnect(quiesce uint)   {}
+func (c *dummyClient) IsConnected() bool       { return true }
+func (c *dummyClient) IsConnectionOpen() bool  { return true }
+func (c *dummyClient) Connect() mqtt.Token     { return &dummyToken{} }
+func (c *dummyClient) Disconnect(quiesce uint) {}
 func (c *dummyClient) Publish(topic string, qos byte, retained bool, payload interface{}) mqtt.Token {
 	return &dummyToken{}
 }
@@ -478,7 +522,7 @@ func (c *dummyClient) Subscribe(topic string, qos byte, callback mqtt.MessageHan
 func (c *dummyClient) SubscribeMultiple(filters map[string]byte, callback mqtt.MessageHandler) mqtt.Token {
 	return &dummyToken{}
 }
-func (c *dummyClient) Unsubscribe(topics ...string) mqtt.Token { return &dummyToken{} }
+func (c *dummyClient) Unsubscribe(topics ...string) mqtt.Token             { return &dummyToken{} }
 func (c *dummyClient) AddRoute(topic string, callback mqtt.MessageHandler) {}
 func (c *dummyClient) OptionsReader() mqtt.ClientOptionsReader {
 	return mqtt.ClientOptionsReader{}
@@ -590,6 +634,304 @@ func updateActiveApp(client mqtt.Client) {
 	token.Wait()
 }
 
+func getWiFiSSID() string {
+	// Prefer networksetup (works even when airport binary is missing on newer macOS)
+	if ssid, ok := getSSIDFromNetworksetup(); ok {
+		return ssid
+	}
+
+	// Try ipconfig getsummary which can expose SSID on some macOS versions
+	if ssid, ok := getSSIDFromIpconfig(); ok {
+		return ssid
+	}
+
+	// Try CoreWLAN via swift as a robust fallback
+	if ssid, _, ok := getWiFiInfoViaSwift(); ok && ssid != "" {
+		return ssid
+	}
+
+	output := getAirportInfo()
+
+	// Extract SSID from airport output
+	r := regexp.MustCompile(`\s+SSID: (.+)`)
+	matches := r.FindStringSubmatch(output)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+
+	return "Not Connected"
+}
+
+func getWiFiSignalStrength() string {
+	output := getAirportInfo()
+
+	// Extract RSSI (signal strength) from airport output
+	r := regexp.MustCompile(`\s+agrCtlRSSI: (-?\d+)`)
+	matches := r.FindStringSubmatch(output)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+
+	// Fallback to system_profiler (RSSI is present even when SSID is redacted)
+	if rssi, ok := getRSSIFromSystemProfiler(); ok {
+		return rssi
+	}
+
+	// Try CoreWLAN via swift
+	if _, rssi, ok := getWiFiInfoViaSwift(); ok && rssi != "" {
+		return rssi
+	}
+
+	return "0"
+}
+
+func getWiFiIPAddress() string {
+	iface := getWiFiInterface()
+	if iface == "" {
+		return "Not Connected"
+	}
+
+	output := getCommandOutput("/usr/sbin/ipconfig", "getifaddr", iface)
+	if output == "" {
+		return "Not Connected"
+	}
+	return output
+}
+
+func updateWiFiSSID(client mqtt.Client) {
+	token := publishMQTT(client, getTopicPrefix()+"/status/wifi_ssid", 0, false, getWiFiSSID())
+	token.Wait()
+}
+
+func updateWiFiSignalStrength(client mqtt.Client) {
+	token := publishMQTT(client, getTopicPrefix()+"/status/wifi_signal_strength", 0, false, getWiFiSignalStrength())
+	token.Wait()
+}
+
+func updateWiFiIPAddress(client mqtt.Client) {
+	token := publishMQTT(client, getTopicPrefix()+"/status/wifi_ip", 0, false, getWiFiIPAddress())
+	token.Wait()
+}
+
+func getAirportInfo() string {
+	path := findAirportPath()
+	if path == "" {
+		return ""
+	}
+
+	cmd := exec.Command(path, "-I")
+	stdout, err := cmd.Output()
+	if err == nil {
+		return strings.TrimSuffix(string(stdout), "\n")
+	}
+
+	log.Printf("Warning: failed to run %s: %v", path, err)
+	return ""
+}
+
+func getSSIDFromNetworksetup() (string, bool) {
+	for _, iface := range wifiInterfaceCandidates() {
+		cmd := exec.Command("/usr/sbin/networksetup", "-getairportnetwork", iface)
+		stdout, err := cmd.CombinedOutput()
+		if err != nil && debugMode {
+			log.Printf("Warning: networksetup -getairportnetwork %s failed: %v", iface, err)
+		}
+
+		network := regexp.MustCompile(`Current Wi-Fi Network: (.+)`).FindStringSubmatch(string(stdout))
+		if len(network) > 1 {
+			return network[1], true
+		}
+		// Skip if explicitly reports not associated
+		if strings.Contains(string(stdout), "not associated") {
+			continue
+		}
+	}
+	return "", false
+}
+
+func getRSSIFromSystemProfiler() (string, bool) {
+	cmd := exec.Command("/usr/sbin/system_profiler", "-detailLevel", "mini", "SPAirPortDataType")
+	stdout, err := cmd.Output()
+	if err != nil {
+		if debugMode {
+			log.Printf("Warning: system_profiler SPAirPortDataType failed: %v", err)
+		}
+		return "", false
+	}
+
+	rssi := regexp.MustCompile(`\s+RSSI: (-?\d+)`).FindStringSubmatch(string(stdout))
+	if len(rssi) > 1 {
+		return rssi[1], true
+	}
+	return "", false
+}
+
+// getWiFiInfoViaSwift uses CoreWLAN via the Swift interpreter to fetch SSID and RSSI.
+func getWiFiInfoViaSwift() (string, string, bool) {
+	script := `
+import CoreWLAN
+if let iface = CWWiFiClient.shared().interface() {
+    if let ssid = iface.ssid() {
+        print("SSID:\(ssid)")
+    }
+    print("RSSI:\(iface.rssiValue())")
+}
+`
+	cmd := exec.Command("/usr/bin/swift", "-e", script)
+
+	cacheDir := getSwiftCacheDir()
+	env := os.Environ()
+	if cacheDir != "" {
+		env = append(env, "SWIFT_MODULE_CACHE_PATH="+cacheDir)
+		env = append(env, "CLANG_MODULE_CACHE_PATH="+cacheDir)
+	}
+	cmd.Env = env
+
+	stdout, err := cmd.CombinedOutput()
+	if err != nil {
+		if debugMode {
+			log.Printf("Warning: swift CoreWLAN SSID/RSSI failed: %v (%s)", err, strings.TrimSpace(string(stdout)))
+		}
+		return "", "", false
+	}
+
+	outStr := string(stdout)
+	ssid := regexp.MustCompile(`(?m)^SSID:(.+)$`).FindStringSubmatch(outStr)
+	rssi := regexp.MustCompile(`(?m)^RSSI:([-0-9]+)$`).FindStringSubmatch(outStr)
+
+	ssidVal := ""
+	rssiVal := ""
+	if len(ssid) > 1 {
+		ssidVal = strings.TrimSpace(ssid[1])
+	}
+	if len(rssi) > 1 {
+		rssiVal = strings.TrimSpace(rssi[1])
+	}
+
+	if ssidVal == "" && rssiVal == "" {
+		return "", "", false
+	}
+	return ssidVal, rssiVal, true
+}
+
+func getSSIDFromIpconfig() (string, bool) {
+	for _, iface := range wifiInterfaceCandidates() {
+		cmd := exec.Command("/usr/sbin/ipconfig", "getsummary", iface)
+		stdout, err := cmd.CombinedOutput()
+		if err != nil {
+			if debugMode {
+				log.Printf("Warning: ipconfig getsummary %s failed: %v", iface, err)
+			}
+			continue
+		}
+
+		ssid := regexp.MustCompile(`(?m)SSID:\\s*(.+)`).FindStringSubmatch(string(stdout))
+		if len(ssid) > 1 {
+			return strings.TrimSpace(ssid[1]), true
+		}
+	}
+	return "", false
+}
+
+var swiftCacheDir string
+var swiftCacheOnce sync.Once
+
+func getSwiftCacheDir() string {
+	swiftCacheOnce.Do(func() {
+		dir, err := os.MkdirTemp("", "mac2mqtt-swiftcache")
+		if err != nil {
+			if debugMode {
+				log.Printf("Warning: unable to create Swift cache dir: %v", err)
+			}
+			swiftCacheDir = ""
+			return
+		}
+		swiftCacheDir = dir
+	})
+	return swiftCacheDir
+}
+
+// getWiFiInterface returns the device name (enX) of the Wi-Fi interface.
+func getWiFiInterface() string {
+	cmd := exec.Command("/usr/sbin/networksetup", "-listallhardwareports")
+	stdout, err := cmd.CombinedOutput()
+	if err != nil {
+		if debugMode {
+			log.Printf("Warning: failed to list hardware ports: %v", err)
+		}
+	}
+	if len(stdout) == 0 {
+		return ""
+	}
+
+	lines := strings.Split(string(stdout), "\n")
+	for i := 0; i < len(lines); i++ {
+		if strings.HasPrefix(lines[i], "Hardware Port: Wi-Fi") || strings.HasPrefix(lines[i], "Hardware Port: AirPort") {
+			// Next line should be "Device: enX"
+			if i+1 < len(lines) && strings.HasPrefix(lines[i+1], "Device: ") {
+				return strings.TrimSpace(strings.TrimPrefix(lines[i+1], "Device: "))
+			}
+		}
+	}
+
+	// Fallback to en0 if detection fails
+	return "en0"
+}
+
+// wifiInterfaceCandidates returns possible Wi-Fi interfaces to probe.
+func wifiInterfaceCandidates() []string {
+	seen := make(map[string]bool)
+	var candidates []string
+
+	add := func(iface string) {
+		if iface == "" {
+			return
+		}
+		if !seen[iface] {
+			seen[iface] = true
+			candidates = append(candidates, iface)
+		}
+	}
+
+	// Preferred interface
+	add(getWiFiInterface())
+
+	// Common fallbacks
+	add("en0")
+	add("en1")
+	add("en2")
+	add("en3")
+
+	return candidates
+}
+
+var airportPath string
+var airportPathOnce sync.Once
+
+func findAirportPath() string {
+	airportPathOnce.Do(func() {
+		candidates := []string{
+			"/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport",
+			"/System/Library/PrivateFrameworks/Apple80211.framework/Versions/A/Resources/airport",
+		}
+
+		// Add any other versioned airport binaries if present (e.g., B, C, etc.)
+		if matches, err := filepath.Glob("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/*/Resources/airport"); err == nil {
+			candidates = append(candidates, matches...)
+		}
+
+		for _, p := range candidates {
+			if _, err := os.Stat(p); err == nil {
+				airportPath = p
+				return
+			}
+		}
+		airportPath = ""
+	})
+
+	return airportPath
+}
+
 func main() {
 
 	log.Println("Started")
@@ -616,6 +958,9 @@ func main() {
 
 			case _ = <-batteryTicker.C:
 				updateBattery(mqttClient)
+				updateWiFiSSID(mqttClient)
+				updateWiFiSignalStrength(mqttClient)
+				updateWiFiIPAddress(mqttClient)
 			}
 		}
 	}()

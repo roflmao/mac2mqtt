@@ -1,0 +1,85 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Generate version tag
+        id: version
+        run: |
+          # Use date-based versioning with commit SHA
+          VERSION="v$(date -u +'%Y.%m.%d')-$(git rev-parse --short HEAD)"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Generated version: $VERSION"
+
+      - name: Build for macOS (ARM64)
+        run: |
+          GOOS=darwin GOARCH=arm64 go build -o mac2mqtt-darwin-arm64 .
+          chmod +x mac2mqtt-darwin-arm64
+
+      - name: Build for macOS (AMD64)
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -o mac2mqtt-darwin-amd64 .
+          chmod +x mac2mqtt-darwin-amd64
+
+      - name: Build for Linux (AMD64)
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o mac2mqtt-linux-amd64 .
+          chmod +x mac2mqtt-linux-amd64
+
+      - name: Build for Linux (ARM64)
+        run: |
+          GOOS=linux GOARCH=arm64 go build -o mac2mqtt-linux-arm64 .
+          chmod +x mac2mqtt-linux-arm64
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          body: |
+            Automated release for commit ${{ github.sha }}
+
+            ## Changes
+            ${{ github.event.head_commit.message }}
+
+            ## Downloads
+            - **macOS (Apple Silicon)**: mac2mqtt-darwin-arm64
+            - **macOS (Intel)**: mac2mqtt-darwin-amd64
+            - **Linux (AMD64)**: mac2mqtt-linux-amd64
+            - **Linux (ARM64)**: mac2mqtt-linux-arm64
+
+            ## Installation
+            1. Download the appropriate binary for your system
+            2. Rename it to `mac2mqtt` and make it executable: `chmod +x mac2mqtt`
+            3. Move it to a location in your PATH, e.g., `/usr/local/bin/`
+            4. Create your `mac2mqtt.yaml` configuration file
+            5. Run `./mac2mqtt`
+          draft: false
+          prerelease: false
+          files: |
+            mac2mqtt-darwin-arm64
+            mac2mqtt-darwin-amd64
+            mac2mqtt-linux-amd64
+            mac2mqtt-linux-arm64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
