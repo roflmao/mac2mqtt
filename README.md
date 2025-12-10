@@ -13,6 +13,9 @@ The following information is published to MQTT:
 * Battery charge percentage
 * Connection status (alive/offline)
 * Active application name
+* Wi-Fi network name (SSID)
+* Wi-Fi signal strength (RSSI)
+* Wi-Fi IP address
 
 ### Remote Control
 
@@ -43,6 +46,9 @@ mac2mqtt publishes the following metrics to MQTT:
 | **Mute Status** | `mac2mqtt/HOSTNAME/status/mute` | `true` / `false` | Every 2 seconds | Whether system audio is muted |
 | **Battery Charge** | `mac2mqtt/HOSTNAME/status/battery` | `0` - `100` | Every 60 seconds | Battery charge percentage (laptops only) |
 | **Active Application** | `mac2mqtt/HOSTNAME/status/active_app` | String | Every 2 seconds | Name of the currently active (frontmost) application |
+| **Wi-Fi SSID** | `mac2mqtt/HOSTNAME/status/wifi_ssid` | String | Every 60 seconds | Name of the currently connected Wi-Fi network |
+| **Wi-Fi Signal Strength** | `mac2mqtt/HOSTNAME/status/wifi_signal_strength` | dBm value | Every 60 seconds | Wi-Fi signal strength (RSSI value, typically -30 to -90) |
+| **Wi-Fi IP Address** | `mac2mqtt/HOSTNAME/status/wifi_ip` | IPv4 address | Every 60 seconds | Current IPv4 address of the primary Wi-Fi interface (en0) |
 
 **Note:** `HOSTNAME` is automatically derived from your macOS computer's hostname (e.g., `bessarabov-osx`).
 
@@ -237,6 +243,9 @@ mac2mqtt supports Home Assistant's MQTT discovery feature. When mac2mqtt connect
 * Sensor - Battery percentage
 * Sensor - Volume level (read-only)
 * Sensor - Active application
+* Sensor - Wi-Fi SSID
+* Sensor - Wi-Fi Signal Strength (RSSI)
+* Sensor - Wi-Fi IP Address
 * Switch - Mute/Unmute
 * Number - Volume control (0-100)
 * Button - Sleep
