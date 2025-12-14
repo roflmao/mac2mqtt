@@ -52,22 +52,26 @@ jobs:
 
       - name: Build for macOS (ARM64)
         run: |
-          GOOS=darwin GOARCH=arm64 go build -o mac2mqtt-darwin-arm64 .
+          VERSION=${{ steps.version.outputs.version }}
+          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=${VERSION}" -o mac2mqtt-darwin-arm64 .
           chmod +x mac2mqtt-darwin-arm64
 
       - name: Build for macOS (AMD64)
         run: |
-          GOOS=darwin GOARCH=amd64 go build -o mac2mqtt-darwin-amd64 .
+          VERSION=${{ steps.version.outputs.version }}
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=${VERSION}" -o mac2mqtt-darwin-amd64 .
           chmod +x mac2mqtt-darwin-amd64
 
       - name: Build for Linux (AMD64)
         run: |
-          GOOS=linux GOARCH=amd64 go build -o mac2mqtt-linux-amd64 .
+          VERSION=${{ steps.version.outputs.version }}
+          GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=${VERSION}" -o mac2mqtt-linux-amd64 .
           chmod +x mac2mqtt-linux-amd64
 
       - name: Build for Linux (ARM64)
         run: |
-          GOOS=linux GOARCH=arm64 go build -o mac2mqtt-linux-arm64 .
+          VERSION=${{ steps.version.outputs.version }}
+          GOOS=linux GOARCH=arm64 go build -ldflags "-X main.version=${VERSION}" -o mac2mqtt-linux-arm64 .
           chmod +x mac2mqtt-linux-arm64
 
       - name: Create Release

@@ -136,6 +136,7 @@ dry_run: false
 * **mqtt_password** (optional) - Password for MQTT authentication
 * **debug** (optional) - Enable debug logging to see all MQTT messages being published (default: false)
 * **dry_run** (optional) - Test mode that simulates MQTT without connecting to a real broker (default: false)
+* **auto_update** (optional) - Enable automatic updates from GitHub releases (default: true)
 
 #### Debug Mode
 
@@ -161,6 +162,115 @@ Connected to MQTT
 [DRY-RUN] Publishing to topic 'homeassistant/binary_sensor/mac2mqtt_your-mac/your-mac_alive/config': {...}
 [DRY-RUN] Publishing to topic 'mac2mqtt/your-mac/status/volume': 50 (QoS=0, Retained=false)
 ```
+
+## Auto-Update
+
+mac2mqtt includes automatic update functionality that keeps your installation up-to-date with the latest releases from GitHub.
+
+### How It Works
+
+By default, mac2mqtt automatically:
+1. Checks for new releases every hour
+2. Downloads the appropriate binary for your platform (darwin/arm64, darwin/amd64, etc.)
+3. Validates the download integrity
+4. Atomically replaces the current binary with a backup
+5. Exits cleanly to allow launchd to restart with the new version
+
+### Configuration
+
+Auto-update is **enabled by default**. To disable it, add to your `mac2mqtt.yaml`:
+
+```yaml
+# Auto-update settings
+auto_update: false  # Set to false to disable automatic updates
+```
+
+### Logging
+
+When auto-update runs, you'll see logs like:
+
+**Startup:**
+```
+Started
+Version: v1.0.2
+Auto-update enabled (checks every hour)
+```
+
+**Update available:**
+```
+Checking for updates...
+New version available: v1.0.2 -> v1.0.3
+Downloading update from https://github.com/bessarabov/mac2mqtt/releases/download/v1.0.3/mac2mqtt-darwin-arm64 (15234567 bytes)
+Downloaded 15234567 bytes to /tmp/mac2mqtt-update-123456
+Replacing binary at /Users/USERNAME/mac2mqtt/mac2mqtt
+Binary replaced successfully, backup saved to /Users/USERNAME/mac2mqtt/mac2mqtt.old
+Update to v1.0.3 completed successfully
+Exiting to allow launchd restart with new binary
+```
+
+**No update needed:**
+```
+Checking for updates...
+Already running latest version (current: v1.0.3, latest: v1.0.3)
+No update required
+```
+
+### Requirements for Auto-Update
+
+**For launchd service users** (recommended):
+- Ensure `KeepAlive` is set to `true` in your plist file (see Running as a Background Service section)
+- mac2mqtt needs write permissions to its binary location
+
+**For manual execution:**
+- Updates will download and install, but you'll need to manually restart the process
+
+### Rollback
+
+If an update causes issues, you can rollback to the previous version:
+
+```bash
+# Stop the service
+sudo launchctl unload /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+
+# Restore the backup
+mv /Users/USERNAME/mac2mqtt/mac2mqtt.old /Users/USERNAME/mac2mqtt/mac2mqtt
+
+# Restart the service
+sudo launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+```
+
+Or disable auto-update by setting `auto_update: false` in your config file.
+
+### Troubleshooting Auto-Update
+
+**Permission errors:**
+```
+Update failed: insufficient permissions to update: cannot write to /Users/USERNAME/mac2mqtt
+```
+
+Solution: Ensure the user running mac2mqtt has write permissions to the binary location.
+
+**Network errors:**
+```
+Update failed: failed to fetch release info: context deadline exceeded (will retry in 1 hour)
+```
+
+Solution: Check your internet connection and ensure GitHub is accessible. Updates will automatically retry every hour.
+
+**Platform not found:**
+```
+Update failed: no binary found for platform darwin/arm64
+```
+
+Solution: This typically means a release hasn't been fully published yet. Updates will retry automatically.
+
+### Security
+
+- Downloads use HTTPS from GitHub releases
+- Download size is validated against expected size
+- Binary updates are atomic (all-or-nothing)
+- A backup (.old) is created before replacement
+- On failure, the system automatically rolls back to the previous version
 
 ## Running
 

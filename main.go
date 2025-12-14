@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"gopkg.in/yaml.v2"
+	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,17 +21,21 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-var hostname string
-var debugMode bool
-var dryRunMode bool
+var (
+	version    = "dev" // Overridden by ldflags at build time
+	hostname   string
+	debugMode  bool
+	dryRunMode bool
+)
 
 type config struct {
-	Ip       string `yaml:"mqtt_ip"`
-	Port     string `yaml:"mqtt_port"`
-	User     string `yaml:"mqtt_user"`
-	Password string `yaml:"mqtt_password"`
-	Debug    bool   `yaml:"debug"`
-	DryRun   bool   `yaml:"dry_run"`
+	Ip         string `yaml:"mqtt_ip"`
+	Port       string `yaml:"mqtt_port"`
+	User       string `yaml:"mqtt_user"`
+	Password   string `yaml:"mqtt_password"`
+	Debug      bool   `yaml:"debug"`
+	DryRun     bool   `yaml:"dry_run"`
+	AutoUpdate *bool  `yaml:"auto_update"` // Pointer: nil = default true
 }
 
 func (c *config) getConfig() *config {
@@ -63,6 +70,13 @@ func (c *config) getConfig() *config {
 	}
 
 	return c
+}
+
+func (c *config) isAutoUpdateEnabled() bool {
+	if c.AutoUpdate == nil {
+		return true // Default enabled
+	}
+	return *c.AutoUpdate
 }
 
 func getHostname() string {
@@ -175,7 +189,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 		"name":         hostname,
 		"model":        "macOS Computer",
 		"manufacturer": "Apple",
-		"sw_version":   "mac2mqtt",
+		"sw_version":   version,
 	}
 
 	// Binary sensor for alive status
@@ -943,9 +957,308 @@ func findAirportPath() string {
 	return airportPath
 }
 
+// GitHubRelease represents a GitHub release response
+type GitHubRelease struct {
+	TagName    string        `json:"tag_name"`
+	Name       string        `json:"name"`
+	Draft      bool          `json:"draft"`
+	Prerelease bool          `json:"prerelease"`
+	Assets     []GitHubAsset `json:"assets"`
+}
+
+type GitHubAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+	Size               int64  `json:"size"`
+}
+
+// checkForUpdate queries GitHub API for the latest release
+func checkForUpdate() (*GitHubRelease, error) {
+	apiURL := "https://api.github.com/repos/bessarabov/mac2mqtt/releases/latest"
+
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set User-Agent (GitHub API requires it)
+	req.Header.Set("User-Agent", "mac2mqtt/"+version)
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch release info: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	}
+
+	var release GitHubRelease
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return nil, fmt.Errorf("failed to decode release info: %w", err)
+	}
+
+	return &release, nil
+}
+
+// isNewerVersion compares two semantic versions
+// Returns true if newVer is newer than currentVer
+func isNewerVersion(currentVer, newVer string) bool {
+	// Strip 'v' prefix if present
+	currentVer = strings.TrimPrefix(currentVer, "v")
+	newVer = strings.TrimPrefix(newVer, "v")
+
+	// Handle dev version
+	if currentVer == "dev" {
+		return true // Always update from dev
+	}
+
+	// Simple string comparison works for semantic versions
+	return newVer > currentVer
+}
+
+// getBinaryNameForPlatform returns the expected binary name for current platform
+func getBinaryNameForPlatform() string {
+	goos := runtime.GOOS
+	goarch := runtime.GOARCH
+
+	return fmt.Sprintf("mac2mqtt-%s-%s", goos, goarch)
+}
+
+// findAssetForCurrentPlatform finds the appropriate download asset
+func findAssetForCurrentPlatform(release *GitHubRelease) (*GitHubAsset, error) {
+	expectedName := getBinaryNameForPlatform()
+
+	for i := range release.Assets {
+		if release.Assets[i].Name == expectedName {
+			return &release.Assets[i], nil
+		}
+	}
+
+	return nil, fmt.Errorf("no binary found for platform %s/%s (looking for %s)",
+		runtime.GOOS, runtime.GOARCH, expectedName)
+}
+
+// downloadBinary downloads a binary to a temporary file
+// Returns the temporary file path on success
+func downloadBinary(asset *GitHubAsset) (string, error) {
+	log.Printf("Downloading update from %s (%d bytes)", asset.BrowserDownloadURL, asset.Size)
+
+	client := &http.Client{
+		Timeout: 5 * time.Minute, // Allow time for large downloads
+	}
+
+	resp, err := client.Get(asset.BrowserDownloadURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to download binary: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("download failed with status %d", resp.StatusCode)
+	}
+
+	// Validate Content-Length if available
+	if resp.ContentLength > 0 && resp.ContentLength != asset.Size {
+		return "", fmt.Errorf("size mismatch: expected %d bytes, got %d",
+			asset.Size, resp.ContentLength)
+	}
+
+	// Create temporary file
+	tmpFile, err := os.CreateTemp("", "mac2mqtt-update-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+
+	// Download with size validation
+	written, err := io.Copy(tmpFile, resp.Body)
+	tmpFile.Close()
+
+	if err != nil {
+		os.Remove(tmpPath)
+		return "", fmt.Errorf("failed to write binary: %w", err)
+	}
+
+	if written != asset.Size {
+		os.Remove(tmpPath)
+		return "", fmt.Errorf("incomplete download: expected %d bytes, got %d",
+			asset.Size, written)
+	}
+
+	// Make executable
+	if err := os.Chmod(tmpPath, 0755); err != nil {
+		os.Remove(tmpPath)
+		return "", fmt.Errorf("failed to make binary executable: %w", err)
+	}
+
+	log.Printf("Downloaded %d bytes to %s", written, tmpPath)
+	return tmpPath, nil
+}
+
+// getCurrentExecutablePath returns the absolute path to the running binary
+func getCurrentExecutablePath() (string, error) {
+	exePath, err := os.Executable()
+	if err != nil {
+		return "", fmt.Errorf("failed to get executable path: %w", err)
+	}
+
+	// Resolve symlinks
+	exePath, err = filepath.EvalSymlinks(exePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve symlinks: %w", err)
+	}
+
+	return exePath, nil
+}
+
+// checkWritePermission verifies we can write to the target location
+func checkWritePermission(path string) error {
+	dir := filepath.Dir(path)
+
+	// Try creating a temporary file in the same directory
+	testFile, err := os.CreateTemp(dir, ".mac2mqtt-write-test-*")
+	if err != nil {
+		return fmt.Errorf("cannot write to %s: %w", dir, err)
+	}
+	testPath := testFile.Name()
+	testFile.Close()
+	os.Remove(testPath)
+
+	return nil
+}
+
+// replaceBinary atomically replaces the current binary with the new one
+func replaceBinary(newBinaryPath string) error {
+	currentPath, err := getCurrentExecutablePath()
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Replacing binary at %s", currentPath)
+
+	// Create backup path
+	backupPath := currentPath + ".old"
+
+	// Check if we have write permissions
+	if err := checkWritePermission(currentPath); err != nil {
+		return fmt.Errorf("insufficient permissions to update: %w", err)
+	}
+
+	// Step 1: Rename current binary to backup
+	if err := os.Rename(currentPath, backupPath); err != nil {
+		return fmt.Errorf("failed to create backup: %w", err)
+	}
+
+	// Step 2: Move new binary to current location (atomic)
+	if err := os.Rename(newBinaryPath, currentPath); err != nil {
+		// Restore backup on failure
+		log.Printf("Failed to move new binary, restoring backup: %v", err)
+		if restoreErr := os.Rename(backupPath, currentPath); restoreErr != nil {
+			return fmt.Errorf("failed to install new binary and restore backup: %w (restore error: %v)",
+				err, restoreErr)
+		}
+		return fmt.Errorf("failed to install new binary: %w", err)
+	}
+
+	log.Printf("Binary replaced successfully, backup saved to %s", backupPath)
+
+	// Schedule cleanup of backup (best effort, don't fail if it doesn't work)
+	go func() {
+		time.Sleep(5 * time.Second)
+		if err := os.Remove(backupPath); err != nil {
+			log.Printf("Note: Could not remove backup file %s: %v", backupPath, err)
+		} else {
+			log.Printf("Cleaned up backup file %s", backupPath)
+		}
+	}()
+
+	return nil
+}
+
+// restartSelf exits cleanly to allow launchd to restart with new binary
+func restartSelf() error {
+	log.Println("Exiting to allow launchd restart with new binary")
+	os.Exit(0)
+	return nil // Never reached
+}
+
+// performUpdate executes the complete update process
+func performUpdate() error {
+	log.Printf("Current version: %s", version)
+
+	// Check for new release
+	release, err := checkForUpdate()
+	if err != nil {
+		return fmt.Errorf("update check failed: %w", err)
+	}
+
+	// Skip drafts and prereleases
+	if release.Draft || release.Prerelease {
+		log.Printf("Skipping %s (draft=%v, prerelease=%v)",
+			release.TagName, release.Draft, release.Prerelease)
+		return nil
+	}
+
+	// Compare versions
+	if !isNewerVersion(version, release.TagName) {
+		log.Printf("Already running latest version (current: %s, latest: %s)",
+			version, release.TagName)
+		return nil
+	}
+
+	log.Printf("New version available: %s -> %s", version, release.TagName)
+
+	// Find appropriate binary
+	asset, err := findAssetForCurrentPlatform(release)
+	if err != nil {
+		return fmt.Errorf("update aborted: %w", err)
+	}
+
+	// Download binary
+	tmpPath, err := downloadBinary(asset)
+	if err != nil {
+		return fmt.Errorf("download failed: %w", err)
+	}
+	defer os.Remove(tmpPath) // Cleanup temp file if we don't use it
+
+	// Replace binary
+	if err := replaceBinary(tmpPath); err != nil {
+		return fmt.Errorf("binary replacement failed: %w", err)
+	}
+
+	log.Printf("Update to %s completed successfully", release.TagName)
+
+	// Restart
+	return restartSelf()
+}
+
+// checkAndApplyUpdate is the main entry point for update checks
+// It handles errors gracefully and logs appropriately
+func checkAndApplyUpdate() {
+	log.Println("Checking for updates...")
+
+	err := performUpdate()
+	if err != nil {
+		log.Printf("Update failed: %v (will retry in 1 hour)", err)
+		return
+	}
+
+	// If performUpdate returns without error but we're still here,
+	// it means no update was needed
+	log.Println("No update required")
+}
+
 func main() {
 
 	log.Println("Started")
+	log.Printf("Version: %s", version)
 
 	var c config
 	c.getConfig()
@@ -957,6 +1270,21 @@ func main() {
 
 	volumeTicker := time.NewTicker(2 * time.Second)
 	batteryTicker := time.NewTicker(60 * time.Second)
+	updateTicker := time.NewTicker(1 * time.Hour)
+
+	// Setup auto-update
+	autoUpdateEnabled := c.isAutoUpdateEnabled()
+	if autoUpdateEnabled {
+		log.Println("Auto-update enabled (checks every hour)")
+
+		// Initial check after 30s startup delay
+		go func() {
+			time.Sleep(30 * time.Second)
+			checkAndApplyUpdate()
+		}()
+	} else {
+		log.Println("Auto-update disabled")
+	}
 
 	wg.Add(1)
 	go func() {
@@ -972,6 +1300,11 @@ func main() {
 				updateWiFiSSID(mqttClient)
 				updateWiFiSignalStrength(mqttClient)
 				updateWiFiIPAddress(mqttClient)
+
+			case _ = <-updateTicker.C:
+				if autoUpdateEnabled {
+					go checkAndApplyUpdate() // Non-blocking
+				}
 			}
 		}
 	}()
