@@ -6,3 +6,6 @@ mqtt_port: 1883
 mqtt_user:
 mqtt_password:
 
+# Auto-update settings
+# auto_update: true  # Default: true. Set to false to disable automatic updates
+
