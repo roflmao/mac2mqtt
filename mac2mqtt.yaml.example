@@ -1,0 +1,15 @@
+# MQTT broker settings
+
+mqtt_ip: 192.168.1.123
+mqtt_port: 1883
+mqtt_user: your_username
+mqtt_password: your_password
+
+# Auto-update settings
+# auto_update: true  # Default: true. Set to false to disable automatic updates
+
+# Debug mode - logs MQTT publishes (optional, default: false)
+# debug: false
+
+# Dry-run mode - simulates MQTT without actual connection (optional, default: false)
+# dry_run: false

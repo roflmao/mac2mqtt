@@ -2,6 +2,8 @@
 
 Control and monitor your macOS computer via MQTT. Integrates seamlessly with Home Assistant and other home automation systems.
 
+Originally created by [Ivan Bessarabov](https://github.com/bessarabov/mac2mqtt).
+
 ## Features
 
 ### Status Monitoring
