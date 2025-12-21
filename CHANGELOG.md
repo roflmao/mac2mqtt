@@ -1,6 +1,11 @@
 # Changelog for mac2mqtt
 
 ```
+1.0.4   2025-12-21
+        [Patch]
+        * Fix changelog workflow indentation
+        * Automate changelog updates in release pipeline
+
 1.4.0   2024-03-10
         [Minor]
         * Added go.mod, go.sum and new GitHub Action to create binaries for Apple Silicon Macs & Intel-based Macs
