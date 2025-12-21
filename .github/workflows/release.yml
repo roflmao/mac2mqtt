@@ -59,43 +59,12 @@ jobs:
           PREVIOUS_TAG=${{ steps.version.outputs.previous_tag }}
           RELEASE_DATE=$(date +%Y-%m-%d)
 
-          if [ -z "$PREVIOUS_TAG" ]; then
-            git log --no-merges --pretty=format:"%s" > /tmp/commits.txt
-          else
-            git log "${PREVIOUS_TAG}..HEAD" --no-merges --pretty=format:"%s" > /tmp/commits.txt
+          ARGS=(--version "$VERSION" --release-date "$RELEASE_DATE")
+          if [ -n "$PREVIOUS_TAG" ]; then
+            ARGS+=(--previous-tag "$PREVIOUS_TAG")
           fi
 
-          if [ ! -s /tmp/commits.txt ]; then
-            echo "Automated release" > /tmp/commits.txt
-          fi
-
-          export VERSION
-          export RELEASE_DATE
-          python <<'PY'
-import os
-
-version = os.environ["VERSION"].lstrip('v')
-release_date = os.environ["RELEASE_DATE"]
-
-with open("/tmp/commits.txt", "r", encoding="utf-8") as commits_file:
-    commits = [line.strip() for line in commits_file if line.strip()]
-
-bullet_lines = ''.join(f'        * {line}\n' for line in commits)
-entry = f'{version}   {release_date}\n        [Patch]\n{bullet_lines}\n'
-
-with open("CHANGELOG.md", "r", encoding="utf-8") as changelog:
-    lines = changelog.readlines()
-
-try:
-    insert_index = next(i for i, line in enumerate(lines) if line.strip() == "```") + 1
-except StopIteration:
-    raise SystemExit("Could not find code fence in CHANGELOG.md")
-
-lines.insert(insert_index, entry)
-
-with open("CHANGELOG.md", "w", encoding="utf-8") as changelog:
-    changelog.writelines(lines)
-PY
+          python3 .github/scripts/update_changelog.py "${ARGS[@]}"
 
       - name: Commit CHANGELOG update
         run: |
