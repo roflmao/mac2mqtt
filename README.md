@@ -102,7 +102,7 @@ Place the executable and configuration file in your home directory:
 Requirements: [Go 1.22+](https://go.dev/doc/install)
 
 ```bash
-git clone https://github.com/bessarabov/mac2mqtt.git
+git clone https://github.com/roflmao/mac2mqtt.git
 cd mac2mqtt
 go build .
 ```
@@ -202,7 +202,7 @@ Auto-update enabled (checks every hour)
 ```
 Checking for updates...
 New version available: v1.0.2 -> v1.0.3
-Downloading update from https://github.com/bessarabov/mac2mqtt/releases/download/v1.0.3/mac2mqtt-darwin-arm64 (15234567 bytes)
+Downloading update from https://github.com/roflmao/mac2mqtt/releases/download/v1.0.3/mac2mqtt-darwin-arm64 (15234567 bytes)
 Downloaded 15234567 bytes to /tmp/mac2mqtt-update-123456
 Replacing binary at /Users/USERNAME/mac2mqtt/mac2mqtt
 Binary replaced successfully, backup saved to /Users/USERNAME/mac2mqtt/mac2mqtt.old
