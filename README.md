@@ -53,7 +53,9 @@ mac2mqtt publishes the following metrics to MQTT:
 | **Wi-Fi IP Address** | `mac2mqtt/HOSTNAME/status/wifi_ip` | IPv4 address | Every 60 seconds | Current IPv4 address of the primary Wi-Fi interface (en0) |
 | **Last Boot Time** | `mac2mqtt/HOSTNAME/status/uptime` | ISO 8601 timestamp | Every 60 seconds | Timestamp of when the system last booted (displays as relative time in Home Assistant) |
 
-**Note:** `HOSTNAME` is automatically derived from your macOS computer's hostname (e.g., `bessarabov-osx`).
+**Notes:**
+- `HOSTNAME` is automatically derived from your macOS computer's hostname (e.g., `bessarabov-osx`)
+- **Wi-Fi SSID is unavailable on macOS Ventura+** due to privacy restrictions requiring Apple Developer certificate and code signing. The sensor will show "Not Connected". Signal strength and IP address work without restrictions.
 
 All metrics are published immediately upon connection and then updated according to their schedules.
 
@@ -630,7 +632,7 @@ Name of the currently connected Wi-Fi network.
 
 **Update frequency:** Every 60 seconds
 
-**Note:** On modern macOS versions, this requires Location Services permission to access SSID.
+**Important:** On macOS Ventura and later, accessing Wi-Fi SSID requires a properly signed application with Apple Developer certificate and entitlements. The current command-line version will show "Not Connected" regardless of actual connection status. Signal strength and IP address are not affected by this limitation.
 
 #### `mac2mqtt/COMPUTER_NAME/status/wifi_signal_strength`
 
