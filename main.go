@@ -763,7 +763,10 @@ func getWiFiSSID() string {
 
 	// Log a one-time informational message about SSID restrictions on modern macOS
 	ssidWarningOnce.Do(func() {
-		log.Println("Note: Wi-Fi SSID unavailable. Modern macOS versions require Location Services permission to access SSID. Signal strength and IP address will continue to work.")
+		log.Println("")
+		log.Println("Wi-Fi SSID unavailable - Location Services permission required")
+		printLocationServicesInstructions()
+		log.Println("")
 	})
 
 	return "Not Connected"
@@ -891,6 +894,21 @@ func getWiFiInfoFromSystemProfiler() (ssid string, rssi string, ok bool) {
 func getRSSIFromSystemProfiler() (string, bool) {
 	_, rssi, ok := getWiFiInfoFromSystemProfiler()
 	return rssi, ok
+}
+
+// printLocationServicesInstructions provides guidance on enabling Location Services
+func printLocationServicesInstructions() {
+	log.Println("╔══════════════════════════════════════════════════════════════════════════╗")
+	log.Println("║ To enable Wi-Fi SSID detection, grant Location Services permission:      ║")
+	log.Println("║                                                                          ║")
+	log.Println("║ 1. Open System Settings → Privacy & Security → Location Services       ║")
+	log.Println("║ 2. Enable 'Location Services' (if not already enabled)                  ║")
+	log.Println("║ 3. Scroll down to find 'swift' or 'mac2mqtt'                            ║")
+	log.Println("║ 4. Enable location access                                               ║")
+	log.Println("║ 5. Restart mac2mqtt                                                     ║")
+	log.Println("║                                                                          ║")
+	log.Println("║ Note: Signal strength and IP address work without this permission       ║")
+	log.Println("╚══════════════════════════════════════════════════════════════════════════╝")
 }
 
 // getWiFiInfoViaSwift uses CoreWLAN via the Swift interpreter to fetch SSID and RSSI.
