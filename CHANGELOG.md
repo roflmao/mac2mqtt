@@ -1,6 +1,10 @@
 # Changelog for mac2mqtt
 
 ```
+1.0.6   2025-12-27
+        [Patch]
+        * Improve installation and LaunchDaemon documentation
+
 1.0.5   2025-12-27
         [Patch]
         * Fix auto-update to check correct repository
