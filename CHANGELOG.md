@@ -1,6 +1,11 @@
 # Changelog for mac2mqtt
 
 ```
+1.0.5   2025-12-27
+        [Patch]
+        * Fix auto-update to check correct repository
+        * Update README URLs [skip ci]
+
 1.0.4   2025-12-21
         [Patch]
         * Fix changelog workflow indentation
