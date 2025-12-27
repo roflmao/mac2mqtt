@@ -1,6 +1,11 @@
 # Changelog for mac2mqtt
 
 ```
+2.0.3   2025-12-27
+        [Patch]
+        * Improve Wi-Fi SSID detection and add Location Services instructions
+        * Fix Wi-Fi SSID detection using system_profiler
+
 2.0.2   2025-12-27
         [Patch]
         * Change uptime sensor to timestamp and remove duplicate hostname from entity names
