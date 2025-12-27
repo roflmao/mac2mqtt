@@ -360,6 +360,21 @@ func publishDiscoveryMessages(client mqtt.Client) {
 	}
 	publishConfig(client, "sensor", hostname+"_wifi_ip", wifiIPConfig)
 
+	// Sensor for System Uptime
+	uptimeConfig := map[string]interface{}{
+		"name":                  hostname + " Uptime",
+		"unique_id":             "mac2mqtt_" + hostname + "_uptime",
+		"state_topic":           prefix + "/status/uptime",
+		"unit_of_measurement":   "s",
+		"device_class":          "duration",
+		"icon":                  "mdi:clock-outline",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "sensor", hostname+"_uptime", uptimeConfig)
+
 	log.Println("Published Home Assistant MQTT discovery messages")
 }
 
@@ -397,6 +412,7 @@ var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	updateWiFiSSID(client)
 	updateWiFiSignalStrength(client)
 	updateWiFiIPAddress(client)
+	updateSystemUptime(client)
 
 	listen(client, getTopicPrefix()+"/command/#")
 }
@@ -635,6 +651,32 @@ func getBatteryChargePercent() string {
 
 func updateBattery(client mqtt.Client) {
 	token := publishMQTT(client, getTopicPrefix()+"/status/battery", 0, false, getBatteryChargePercent())
+	token.Wait()
+}
+
+func getSystemUptime() string {
+	output := getCommandOutput("/usr/sbin/sysctl", "-n", "kern.boottime")
+
+	// Parse boot time: { sec = 1766859018, usec = 483520 } Sat Dec 27 19:10:18 2025
+	r := regexp.MustCompile(`sec = (\d+)`)
+	matches := r.FindStringSubmatch(output)
+	if len(matches) < 2 {
+		return "0"
+	}
+
+	bootTimeSec, err := strconv.ParseInt(matches[1], 10, 64)
+	if err != nil {
+		return "0"
+	}
+
+	currentTimeSec := time.Now().Unix()
+	uptimeSec := currentTimeSec - bootTimeSec
+
+	return strconv.FormatInt(uptimeSec, 10)
+}
+
+func updateSystemUptime(client mqtt.Client) {
+	token := publishMQTT(client, getTopicPrefix()+"/status/uptime", 0, false, getSystemUptime())
 	token.Wait()
 }
 
@@ -1300,6 +1342,7 @@ func main() {
 				updateWiFiSSID(mqttClient)
 				updateWiFiSignalStrength(mqttClient)
 				updateWiFiIPAddress(mqttClient)
+				updateSystemUptime(mqttClient)
 
 			case _ = <-updateTicker.C:
 				if autoUpdateEnabled {
