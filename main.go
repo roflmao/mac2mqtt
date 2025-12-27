@@ -732,6 +732,11 @@ func updateActiveApp(client mqtt.Client) {
 var ssidWarningOnce sync.Once
 
 func getWiFiSSID() string {
+	// Try system_profiler first - works on modern macOS when Location Services is enabled
+	if ssid, _, ok := getWiFiInfoFromSystemProfiler(); ok && ssid != "" {
+		return ssid
+	}
+
 	// Prefer networksetup (works even when airport binary is missing on newer macOS)
 	if ssid, ok := getSSIDFromNetworksetup(); ok {
 		return ssid
@@ -853,21 +858,39 @@ func getSSIDFromNetworksetup() (string, bool) {
 	return "", false
 }
 
-func getRSSIFromSystemProfiler() (string, bool) {
+func getWiFiInfoFromSystemProfiler() (ssid string, rssi string, ok bool) {
 	cmd := exec.Command("/usr/sbin/system_profiler", "-detailLevel", "mini", "SPAirPortDataType")
 	stdout, err := cmd.Output()
 	if err != nil {
 		if debugMode {
 			log.Printf("Warning: system_profiler SPAirPortDataType failed: %v", err)
 		}
-		return "", false
+		return "", "", false
 	}
 
-	rssi := regexp.MustCompile(`\s+RSSI: (-?\d+)`).FindStringSubmatch(string(stdout))
-	if len(rssi) > 1 {
-		return rssi[1], true
+	output := string(stdout)
+
+	// Extract SSID - it appears after "Current Network Information:" on the next line
+	// Format: "          SSID_NAME:"
+	ssidMatch := regexp.MustCompile(`Current Network Information:\s+(\S+):`).FindStringSubmatch(output)
+	if len(ssidMatch) > 1 {
+		ssid = ssidMatch[1]
+		ok = true
 	}
-	return "", false
+
+	// Extract RSSI
+	rssiMatch := regexp.MustCompile(`\s+RSSI: (-?\d+)`).FindStringSubmatch(output)
+	if len(rssiMatch) > 1 {
+		rssi = rssiMatch[1]
+		ok = true
+	}
+
+	return ssid, rssi, ok
+}
+
+func getRSSIFromSystemProfiler() (string, bool) {
+	_, rssi, ok := getWiFiInfoFromSystemProfiler()
+	return rssi, ok
 }
 
 // getWiFiInfoViaSwift uses CoreWLAN via the Swift interpreter to fetch SSID and RSSI.
