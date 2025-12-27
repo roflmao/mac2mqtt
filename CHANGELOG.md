@@ -1,6 +1,10 @@
 # Changelog for mac2mqtt
 
 ```
+1.0.10   2025-12-27
+        [Patch]
+        * Fix uptime sensor to display as relative time in Home Assistant
+
 1.0.9   2025-12-27
         [Patch]
         * Clarify launchctl commands for LaunchDaemon management
