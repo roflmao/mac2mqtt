@@ -1068,9 +1068,36 @@ func isNewerVersion(currentVer, newVer string) bool {
 // getBinaryNameForPlatform returns the expected binary name for current platform
 func getBinaryNameForPlatform() string {
 	goos := runtime.GOOS
-	goarch := runtime.GOARCH
+	goarch := getNativeArchitecture()
 
 	return fmt.Sprintf("mac2mqtt-%s-%s", goos, goarch)
+}
+
+// getNativeArchitecture returns the native system architecture
+// This is needed because runtime.GOARCH returns the architecture of the running binary,
+// not the system. If an amd64 binary runs on arm64 via Rosetta, runtime.GOARCH
+// returns "amd64" but we want "arm64" for auto-updates.
+func getNativeArchitecture() string {
+	// Try uname -m to get native architecture
+	cmd := exec.Command("uname", "-m")
+	output, err := cmd.Output()
+	if err != nil {
+		// Fallback to runtime.GOARCH if command fails
+		return runtime.GOARCH
+	}
+
+	arch := strings.TrimSpace(string(output))
+
+	// Map uname output to Go architecture names
+	switch arch {
+	case "x86_64":
+		return "amd64"
+	case "arm64", "aarch64":
+		return "arm64"
+	default:
+		// For unknown architectures, fallback to runtime.GOARCH
+		return runtime.GOARCH
+	}
 }
 
 // findAssetForCurrentPlatform finds the appropriate download asset
