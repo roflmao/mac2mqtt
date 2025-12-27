@@ -1,6 +1,12 @@
 # Changelog for mac2mqtt
 
 ```
+2.0.4   2025-12-27
+        [Patch]
+        * Document Wi-Fi SSID limitations on modern macOS
+        * Update CHANGELOG for v2.1.0 with all fixes and improvements
+        * Update Wi-Fi SSID limitation message to reflect reality
+
 2.0.3   2025-12-27
         [Patch]
         * Improve Wi-Fi SSID detection and add Location Services instructions
