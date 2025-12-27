@@ -39,9 +39,13 @@ sub main {
         if ($line =~ /^\Q$version_for_changelog\E\s+/) {
             $is_in_changelog_for_this_version = 1;
         } elsif ($line =~ /^(\d+\.\d+\.\d+)\s+/a) {
-            $is_in_changelog_for_this_version = 0;
-            $previous_tag = $1;
-            last;
+            if ($is_in_changelog_for_this_version) {
+                # Found next version after current - this is the previous version
+                $is_in_changelog_for_this_version = 0;
+                $previous_tag = $1;
+                last;
+            }
+            # Skip versions that appear before current version in changelog
         }
 
         if ($is_in_changelog_for_this_version) {
