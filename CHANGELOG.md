@@ -1,6 +1,11 @@
 # Changelog for mac2mqtt
 
 ```
+2.0.1   2025-12-27
+        [Patch]
+        * Fix release description script to handle v prefix in tags
+        * [skip ci] Update CHANGELOG for v1.0.11
+
 1.0.11   2025-12-27
         [Patch]
         * Fix release.yaml to use correct binary names for auto-update
