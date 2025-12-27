@@ -1,9 +1,13 @@
 # Changelog for mac2mqtt
 
 ```
-1.0.10   2025-12-27
-        [Patch]
-        * Fix uptime sensor to display as relative time in Home Assistant
+2.0.0   2025-12-27
+        [Major]
+        * Add system uptime monitoring with relative time display in Home Assistant
+        * Fix auto-update to check correct repository (roflmao/mac2mqtt instead of bessarabov/mac2mqtt)
+        * Fix auto-update architecture detection to download native ARM64 binaries on Apple Silicon
+        * Improve LaunchDaemon documentation with correct launchctl commands
+        * Fix uptime sensor display formatting in Home Assistant
 
 1.0.9   2025-12-27
         [Patch]
