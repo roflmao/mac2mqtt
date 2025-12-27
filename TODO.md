@@ -58,7 +58,7 @@ This document tracks potential features and enhancements for mac2mqtt.
   - Download rate
   - Network interface statistics
 
-- [ ] **System Uptime**
+- [x] **System Uptime**
   - Time since last boot
 
 ### Display
