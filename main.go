@@ -367,6 +367,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 		"state_topic":           prefix + "/status/uptime",
 		"unit_of_measurement":   "s",
 		"device_class":          "duration",
+		"state_class":           "measurement",
 		"icon":                  "mdi:clock-outline",
 		"availability_topic":    prefix + "/status/alive",
 		"payload_available":     "true",
