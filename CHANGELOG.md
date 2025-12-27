@@ -1,6 +1,14 @@
 # Changelog for mac2mqtt
 
 ```
+2.0.1   2025-12-27
+        [Patch]
+        * Update README with comprehensive sensor and command documentation
+        * Fix display sleep to work when running as LaunchDaemon
+        * [skip ci] Clean up CHANGELOG - remove auto-generated 1.0.12 entry
+        * [skip ci] Prevent auto-increment when manual version tag exists
+        * [skip ci] Update CHANGELOG for v1.0.12
+
 2.0.0   2025-12-27
         [Major]
         * Add system uptime monitoring with relative time display in Home Assistant
