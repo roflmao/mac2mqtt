@@ -51,7 +51,7 @@ mac2mqtt publishes the following metrics to MQTT:
 | **Wi-Fi SSID** | `mac2mqtt/HOSTNAME/status/wifi_ssid` | String | Every 60 seconds | Name of the currently connected Wi-Fi network |
 | **Wi-Fi Signal Strength** | `mac2mqtt/HOSTNAME/status/wifi_signal_strength` | dBm value | Every 60 seconds | Wi-Fi signal strength (RSSI value, typically -30 to -90) |
 | **Wi-Fi IP Address** | `mac2mqtt/HOSTNAME/status/wifi_ip` | IPv4 address | Every 60 seconds | Current IPv4 address of the primary Wi-Fi interface (en0) |
-| **System Uptime** | `mac2mqtt/HOSTNAME/status/uptime` | Seconds | Every 60 seconds | Time since last boot in seconds (displays as relative time in Home Assistant) |
+| **Last Boot Time** | `mac2mqtt/HOSTNAME/status/uptime` | ISO 8601 timestamp | Every 60 seconds | Timestamp of when the system last booted (displays as relative time in Home Assistant) |
 
 **Note:** `HOSTNAME` is automatically derived from your macOS computer's hostname (e.g., `bessarabov-osx`).
 
@@ -434,16 +434,16 @@ mac2mqtt supports Home Assistant's MQTT discovery feature. When mac2mqtt connect
 
 **Automatically discovered entities:**
 
-* Binary Sensor - Connection status
-* Sensor - Battery percentage
-* Sensor - Volume level (read-only)
-* Sensor - Active application
+* Binary Sensor - Status (connection status)
+* Sensor - Battery
+* Sensor - Volume Level (read-only)
+* Sensor - Active App
 * Sensor - Wi-Fi SSID
-* Sensor - Wi-Fi Signal Strength (RSSI)
-* Sensor - Wi-Fi IP Address
-* Sensor - System Uptime
-* Switch - Mute/Unmute
-* Number - Volume control (0-100)
+* Sensor - Wi-Fi Signal Strength
+* Sensor - Wi-Fi IP
+* Sensor - Last Boot (timestamp)
+* Switch - Mute
+* Number - Volume (0-100)
 * Button - Sleep
 * Button - Shutdown
 * Button - Display Sleep
@@ -654,13 +654,15 @@ Current IPv4 address of the primary Wi-Fi interface.
 
 #### `mac2mqtt/COMPUTER_NAME/status/uptime`
 
-**Values:** Integer (seconds)
+**Values:** ISO 8601 timestamp
 
-Time since last boot in seconds.
+Timestamp of when the system last booted.
 
 **Update frequency:** Every 60 seconds
 
-**Note:** Displays as relative time (e.g., "2 days, 3 hours") in Home Assistant.
+**Example values:** `2025-12-27T19:10:18Z`
+
+**Note:** Home Assistant displays this as relative time (e.g., "2 hours ago").
 
 ### Command Topics
 

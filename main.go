@@ -235,7 +235,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Binary sensor for alive status
 	aliveConfig := map[string]interface{}{
-		"name":         hostname + " Status",
+		"name":         "Status",
 		"unique_id":    "mac2mqtt_" + hostname + "_alive",
 		"state_topic":  prefix + "/status/alive",
 		"payload_on":   "true",
@@ -247,7 +247,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Sensor for battery
 	batteryConfig := map[string]interface{}{
-		"name":                  hostname + " Battery",
+		"name":                  "Battery",
 		"unique_id":             "mac2mqtt_" + hostname + "_battery",
 		"state_topic":           prefix + "/status/battery",
 		"unit_of_measurement":   "%",
@@ -261,7 +261,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Sensor for volume (read-only)
 	volumeSensorConfig := map[string]interface{}{
-		"name":                  hostname + " Volume Level",
+		"name":                  "Volume Level",
 		"unique_id":             "mac2mqtt_" + hostname + "_volume_sensor",
 		"state_topic":           prefix + "/status/volume",
 		"unit_of_measurement":   "%",
@@ -275,7 +275,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Switch for mute
 	muteConfig := map[string]interface{}{
-		"name":                  hostname + " Mute",
+		"name":                  "Mute",
 		"unique_id":             "mac2mqtt_" + hostname + "_mute",
 		"state_topic":           prefix + "/status/mute",
 		"command_topic":         prefix + "/command/mute",
@@ -291,7 +291,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Number for volume control
 	volumeConfig := map[string]interface{}{
-		"name":                  hostname + " Volume",
+		"name":                  "Volume",
 		"unique_id":             "mac2mqtt_" + hostname + "_volume",
 		"state_topic":           prefix + "/status/volume",
 		"command_topic":         prefix + "/command/volume",
@@ -308,7 +308,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Button for sleep
 	sleepConfig := map[string]interface{}{
-		"name":                  hostname + " Sleep",
+		"name":                  "Sleep",
 		"unique_id":             "mac2mqtt_" + hostname + "_sleep",
 		"command_topic":         prefix + "/command/sleep",
 		"payload_press":         "sleep",
@@ -322,7 +322,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Button for shutdown
 	shutdownConfig := map[string]interface{}{
-		"name":                  hostname + " Shutdown",
+		"name":                  "Shutdown",
 		"unique_id":             "mac2mqtt_" + hostname + "_shutdown",
 		"command_topic":         prefix + "/command/shutdown",
 		"payload_press":         "shutdown",
@@ -336,7 +336,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Button for display sleep
 	displaysleepConfig := map[string]interface{}{
-		"name":                  hostname + " Display Sleep",
+		"name":                  "Display Sleep",
 		"unique_id":             "mac2mqtt_" + hostname + "_displaysleep",
 		"command_topic":         prefix + "/command/displaysleep",
 		"payload_press":         "displaysleep",
@@ -350,7 +350,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Sensor for active application
 	activeAppConfig := map[string]interface{}{
-		"name":                  hostname + " Active App",
+		"name":                  "Active App",
 		"unique_id":             "mac2mqtt_" + hostname + "_active_app",
 		"state_topic":           prefix + "/status/active_app",
 		"icon":                  "mdi:application",
@@ -363,7 +363,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Sensor for Wi-Fi SSID
 	wifiSSIDConfig := map[string]interface{}{
-		"name":                  hostname + " Wi-Fi SSID",
+		"name":                  "Wi-Fi SSID",
 		"unique_id":             "mac2mqtt_" + hostname + "_wifi_ssid",
 		"state_topic":           prefix + "/status/wifi_ssid",
 		"icon":                  "mdi:wifi",
@@ -376,7 +376,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Sensor for Wi-Fi Signal Strength (RSSI)
 	wifiSignalConfig := map[string]interface{}{
-		"name":                  hostname + " Wi-Fi Signal Strength",
+		"name":                  "Wi-Fi Signal Strength",
 		"unique_id":             "mac2mqtt_" + hostname + "_wifi_signal_strength",
 		"state_topic":           prefix + "/status/wifi_signal_strength",
 		"unit_of_measurement":   "dBm",
@@ -390,7 +390,7 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Sensor for Wi-Fi IP Address
 	wifiIPConfig := map[string]interface{}{
-		"name":                  hostname + " Wi-Fi IP",
+		"name":                  "Wi-Fi IP",
 		"unique_id":             "mac2mqtt_" + hostname + "_wifi_ip",
 		"state_topic":           prefix + "/status/wifi_ip",
 		"icon":                  "mdi:ip-network",
@@ -403,12 +403,10 @@ func publishDiscoveryMessages(client mqtt.Client) {
 
 	// Sensor for System Uptime
 	uptimeConfig := map[string]interface{}{
-		"name":                  hostname + " Uptime",
+		"name":                  "Last Boot",
 		"unique_id":             "mac2mqtt_" + hostname + "_uptime",
 		"state_topic":           prefix + "/status/uptime",
-		"unit_of_measurement":   "s",
-		"device_class":          "duration",
-		"state_class":           "measurement",
+		"device_class":          "timestamp",
 		"icon":                  "mdi:clock-outline",
 		"availability_topic":    prefix + "/status/alive",
 		"payload_available":     "true",
@@ -703,18 +701,17 @@ func getSystemUptime() string {
 	r := regexp.MustCompile(`sec = (\d+)`)
 	matches := r.FindStringSubmatch(output)
 	if len(matches) < 2 {
-		return "0"
+		return ""
 	}
 
 	bootTimeSec, err := strconv.ParseInt(matches[1], 10, 64)
 	if err != nil {
-		return "0"
+		return ""
 	}
 
-	currentTimeSec := time.Now().Unix()
-	uptimeSec := currentTimeSec - bootTimeSec
-
-	return strconv.FormatInt(uptimeSec, 10)
+	// Return ISO 8601 timestamp for Home Assistant timestamp sensor
+	bootTime := time.Unix(bootTimeSec, 0)
+	return bootTime.Format(time.RFC3339)
 }
 
 func updateSystemUptime(client mqtt.Client) {
