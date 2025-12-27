@@ -1,6 +1,10 @@
 # Changelog for mac2mqtt
 
 ```
+1.0.8   2025-12-27
+        [Patch]
+        * Fix auto-update to detect native system architecture
+
 1.0.7   2025-12-27
         [Patch]
         * Add system uptime monitoring
