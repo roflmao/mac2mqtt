@@ -163,7 +163,7 @@ func commandSleep() {
 func commandDisplaySleep() {
 	// When running as a LaunchDaemon (especially as root), pmset displaysleepnow
 	// may not work properly because it lacks the user session context.
-	// We need to run the command as the console user.
+	// We need to run the command in the user's session using launchctl asuser.
 
 	// Get the console user
 	consoleUserCmd := exec.Command("/usr/bin/stat", "-f", "%Su", "/dev/console")
@@ -182,14 +182,26 @@ func commandDisplaySleep() {
 		return
 	}
 
-	// Run pmset as the console user using su
-	cmd := exec.Command("/usr/bin/su", "-", consoleUser, "-c", "/usr/bin/pmset displaysleepnow")
+	// Get the UID of the console user
+	uidCmd := exec.Command("/usr/bin/id", "-u", consoleUser)
+	uidBytes, err := uidCmd.Output()
+	if err != nil {
+		log.Printf("Failed to get UID for user %s: %v", consoleUser, err)
+		// Fallback to direct pmset
+		runCommand("/usr/bin/pmset", "displaysleepnow")
+		return
+	}
+
+	uid := strings.TrimSpace(string(uidBytes))
+
+	// Run pmset in the user's session context using launchctl asuser
+	cmd := exec.Command("/bin/launchctl", "asuser", uid, "/usr/bin/pmset", "displaysleepnow")
 	output, err := cmd.CombinedOutput()
 
 	if err != nil {
 		log.Printf("Display sleep command failed: %v, output: %s", err, string(output))
 	} else if debugMode {
-		log.Printf("Display sleep command executed as user %s", consoleUser)
+		log.Printf("Display sleep command executed in session for user %s (UID: %s)", consoleUser, uid)
 	}
 }
 
