@@ -27,6 +27,15 @@ jobs:
       - name: Generate version tag
         id: version
         run: |
+          # Check if HEAD already has a version tag (manual tag)
+          CURRENT_TAG=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)
+          if [ -n "$CURRENT_TAG" ]; then
+            echo "HEAD already has version tag: $CURRENT_TAG"
+            echo "Skipping auto-increment (manual version tag detected)"
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           # Get the latest tag matching v*.*.* pattern
           LATEST_TAG=$(git tag -l "v*.*.*" | sort -V | tail -n1)
 
@@ -53,6 +62,7 @@ jobs:
           echo "Generated version: $VERSION"
 
       - name: Update CHANGELOG.md
+        if: steps.version.outputs.skip != 'true'
         run: |
           set -euo pipefail
           VERSION=${{ steps.version.outputs.version }}
@@ -67,6 +77,7 @@ jobs:
           python3 .github/scripts/update_changelog.py "${ARGS[@]}"
 
       - name: Commit CHANGELOG update
+        if: steps.version.outputs.skip != 'true'
         run: |
           set -euo pipefail
           VERSION=${{ steps.version.outputs.version }}
@@ -82,30 +93,35 @@ jobs:
           git push origin HEAD:${{ github.ref }}
 
       - name: Build for macOS (ARM64)
+        if: steps.version.outputs.skip != 'true'
         run: |
           VERSION=${{ steps.version.outputs.version }}
           GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=${VERSION}" -o mac2mqtt-darwin-arm64 .
           chmod +x mac2mqtt-darwin-arm64
 
       - name: Build for macOS (AMD64)
+        if: steps.version.outputs.skip != 'true'
         run: |
           VERSION=${{ steps.version.outputs.version }}
           GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=${VERSION}" -o mac2mqtt-darwin-amd64 .
           chmod +x mac2mqtt-darwin-amd64
 
       - name: Build for Linux (AMD64)
+        if: steps.version.outputs.skip != 'true'
         run: |
           VERSION=${{ steps.version.outputs.version }}
           GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=${VERSION}" -o mac2mqtt-linux-amd64 .
           chmod +x mac2mqtt-linux-amd64
 
       - name: Build for Linux (ARM64)
+        if: steps.version.outputs.skip != 'true'
         run: |
           VERSION=${{ steps.version.outputs.version }}
           GOOS=linux GOARCH=arm64 go build -ldflags "-X main.version=${VERSION}" -o mac2mqtt-linux-arm64 .
           chmod +x mac2mqtt-linux-arm64
 
       - name: Create Release
+        if: steps.version.outputs.skip != 'true'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.version }}
