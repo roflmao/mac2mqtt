@@ -896,18 +896,20 @@ func getRSSIFromSystemProfiler() (string, bool) {
 	return rssi, ok
 }
 
-// printLocationServicesInstructions provides guidance on enabling Location Services
+// printLocationServicesInstructions provides guidance on SSID limitations
 func printLocationServicesInstructions() {
 	log.Println("╔══════════════════════════════════════════════════════════════════════════╗")
-	log.Println("║ To enable Wi-Fi SSID detection, grant Location Services permission:      ║")
+	log.Println("║ Wi-Fi SSID is unavailable due to macOS privacy restrictions             ║")
 	log.Println("║                                                                          ║")
-	log.Println("║ 1. Open System Settings → Privacy & Security → Location Services       ║")
-	log.Println("║ 2. Enable 'Location Services' (if not already enabled)                  ║")
-	log.Println("║ 3. Scroll down to find 'swift' or 'mac2mqtt'                            ║")
-	log.Println("║ 4. Enable location access                                               ║")
-	log.Println("║ 5. Restart mac2mqtt                                                     ║")
+	log.Println("║ Modern macOS (Ventura+) requires bundled applications with proper       ║")
+	log.Println("║ entitlements and Location Services permission to access Wi-Fi SSID.     ║")
+	log.Println("║ Command-line tools like mac2mqtt cannot satisfy these requirements.     ║")
 	log.Println("║                                                                          ║")
-	log.Println("║ Note: Signal strength and IP address work without this permission       ║")
+	log.Println("║ Available Wi-Fi metrics without SSID:                                   ║")
+	log.Println("║ • Signal Strength (RSSI)                                                ║")
+	log.Println("║ • IP Address                                                            ║")
+	log.Println("║                                                                          ║")
+	log.Println("║ The SSID sensor will display 'Not Connected' in Home Assistant          ║")
 	log.Println("╚══════════════════════════════════════════════════════════════════════════╝")
 }
 
