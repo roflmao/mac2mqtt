@@ -396,17 +396,24 @@ sudo launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 
 4. Managing the service:
 
+**IMPORTANT:** Do NOT use `launchctl stop` or `launchctl start` - they don't work with LaunchDaemons that have `KeepAlive: true`. Use the commands below instead.
+
+**Correct commands:**
+
 ```bash
-# Restart the service
+# Restart the service (most common operation)
 sudo launchctl kickstart -k system/com.bessarabov.mac2mqtt
 
-# Stop the service (unload completely)
+# Stop the service completely (unload it)
 sudo launchctl unload /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 
-# Start the service (if previously unloaded)
+# Start the service (after unloading)
 sudo launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 
-# Check service status
+# Check if service is running
+sudo launchctl list | grep mac2mqtt
+
+# View detailed service status
 sudo launchctl print system/com.bessarabov.mac2mqtt
 
 # View logs (if logging is enabled in plist)
@@ -414,7 +421,9 @@ tail -f /tmp/mac2mqtt.err
 tail -f /tmp/mac2mqtt.log
 ```
 
-**Note:** The `launchctl stop` command won't work because `KeepAlive` is set to `true` - the service will immediately restart. To stop it, you must use `unload`.
+**Why `stop` and `start` don't work:**
+- `launchctl stop` - The service immediately restarts because `KeepAlive: true`
+- `launchctl start` - Only works for LaunchAgents, not LaunchDaemons
 
 ## Home Assistant Integration
 
