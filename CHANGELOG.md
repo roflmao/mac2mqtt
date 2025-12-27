@@ -1,6 +1,11 @@
 # Changelog for mac2mqtt
 
 ```
+2.0.2   2025-12-27
+        [Patch]
+        * Change uptime sensor to timestamp and remove duplicate hostname from entity names
+        * Fix display sleep to use launchctl asuser
+
 2.0.1   2025-12-27
         [Patch]
         * Update README with comprehensive sensor and command documentation
