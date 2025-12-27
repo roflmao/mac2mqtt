@@ -21,6 +21,10 @@ sub main {
         die "Must run as '$0 TAG'"
     }
 
+    # Strip 'v' prefix from tag if present (e.g., v2.0.0 -> 2.0.0)
+    my $version_for_changelog = $current_tag;
+    $version_for_changelog =~ s/^v//;
+
     my $changelog_for_this_version = '';
     my $previous_tag = '';
     my $is_in_changelog_for_this_version = 0;
@@ -32,7 +36,7 @@ sub main {
     while (my $line = <$fh>) {
         chomp $line;
 
-        if ($line =~ /^\Q$current_tag\E\s+/) {
+        if ($line =~ /^\Q$version_for_changelog\E\s+/) {
             $is_in_changelog_for_this_version = 1;
         } elsif ($line =~ /^(\d+\.\d+\.\d+)\s+/a) {
             $is_in_changelog_for_this_version = 0;
@@ -61,7 +65,7 @@ sub main {
 $changelog_for_this_version
 ```
 
-Full diff: https://github.com/bessarabov/mac2mqtt/compare/$previous_tag...$current_tag
+Full diff: https://github.com/roflmao/mac2mqtt/compare/$previous_tag...$current_tag
 ";
 
     write_file('release_description.txt', $release_description);
