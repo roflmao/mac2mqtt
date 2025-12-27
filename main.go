@@ -161,7 +161,36 @@ func commandSleep() {
 }
 
 func commandDisplaySleep() {
-	runCommand("pmset", "displaysleepnow")
+	// When running as a LaunchDaemon (especially as root), pmset displaysleepnow
+	// may not work properly because it lacks the user session context.
+	// We need to run the command as the console user.
+
+	// Get the console user
+	consoleUserCmd := exec.Command("/usr/bin/stat", "-f", "%Su", "/dev/console")
+	consoleUserBytes, err := consoleUserCmd.Output()
+	if err != nil {
+		log.Printf("Failed to get console user: %v", err)
+		// Fallback to direct pmset
+		runCommand("/usr/bin/pmset", "displaysleepnow")
+		return
+	}
+
+	consoleUser := strings.TrimSpace(string(consoleUserBytes))
+	if consoleUser == "" || consoleUser == "root" {
+		// No user logged in or running as user already, use direct command
+		runCommand("/usr/bin/pmset", "displaysleepnow")
+		return
+	}
+
+	// Run pmset as the console user using su
+	cmd := exec.Command("/usr/bin/su", "-", consoleUser, "-c", "/usr/bin/pmset displaysleepnow")
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		log.Printf("Display sleep command failed: %v, output: %s", err, string(output))
+	} else if debugMode {
+		log.Printf("Display sleep command executed as user %s", consoleUser)
+	}
 }
 
 func commandShutdown() {

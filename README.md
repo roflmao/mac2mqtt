@@ -51,6 +51,7 @@ mac2mqtt publishes the following metrics to MQTT:
 | **Wi-Fi SSID** | `mac2mqtt/HOSTNAME/status/wifi_ssid` | String | Every 60 seconds | Name of the currently connected Wi-Fi network |
 | **Wi-Fi Signal Strength** | `mac2mqtt/HOSTNAME/status/wifi_signal_strength` | dBm value | Every 60 seconds | Wi-Fi signal strength (RSSI value, typically -30 to -90) |
 | **Wi-Fi IP Address** | `mac2mqtt/HOSTNAME/status/wifi_ip` | IPv4 address | Every 60 seconds | Current IPv4 address of the primary Wi-Fi interface (en0) |
+| **System Uptime** | `mac2mqtt/HOSTNAME/status/uptime` | Seconds | Every 60 seconds | Time since last boot in seconds (displays as relative time in Home Assistant) |
 
 **Note:** `HOSTNAME` is automatically derived from your macOS computer's hostname (e.g., `bessarabov-osx`).
 
@@ -440,6 +441,7 @@ mac2mqtt supports Home Assistant's MQTT discovery feature. When mac2mqtt connect
 * Sensor - Wi-Fi SSID
 * Sensor - Wi-Fi Signal Strength (RSSI)
 * Sensor - Wi-Fi IP Address
+* Sensor - System Uptime
 * Switch - Mute/Unmute
 * Number - Volume control (0-100)
 * Button - Sleep
@@ -609,6 +611,56 @@ Mute status:
 Battery charge percentage.
 
 **Update frequency:** Every 60 seconds
+
+#### `mac2mqtt/COMPUTER_NAME/status/active_app`
+
+**Values:** String (application name)
+
+Name of the currently active (frontmost) application.
+
+**Update frequency:** Every 2 seconds
+
+**Example values:** `Safari`, `Terminal`, `Visual Studio Code`
+
+#### `mac2mqtt/COMPUTER_NAME/status/wifi_ssid`
+
+**Values:** String (network name) or `Not Connected`
+
+Name of the currently connected Wi-Fi network.
+
+**Update frequency:** Every 60 seconds
+
+**Note:** On modern macOS versions, this requires Location Services permission to access SSID.
+
+#### `mac2mqtt/COMPUTER_NAME/status/wifi_signal_strength`
+
+**Values:** Integer (dBm)
+
+Wi-Fi signal strength in dBm (typically -30 to -90).
+
+**Update frequency:** Every 60 seconds
+
+**Range:** Higher (less negative) values = stronger signal. Example: -40 dBm is stronger than -70 dBm.
+
+#### `mac2mqtt/COMPUTER_NAME/status/wifi_ip`
+
+**Values:** IPv4 address or `Not Connected`
+
+Current IPv4 address of the primary Wi-Fi interface.
+
+**Update frequency:** Every 60 seconds
+
+**Example values:** `192.168.1.100`, `10.0.0.50`
+
+#### `mac2mqtt/COMPUTER_NAME/status/uptime`
+
+**Values:** Integer (seconds)
+
+Time since last boot in seconds.
+
+**Update frequency:** Every 60 seconds
+
+**Note:** Displays as relative time (e.g., "2 days, 3 hours") in Home Assistant.
 
 ### Command Topics
 
