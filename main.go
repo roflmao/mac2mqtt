@@ -974,7 +974,7 @@ type GitHubAsset struct {
 
 // checkForUpdate queries GitHub API for the latest release
 func checkForUpdate() (*GitHubRelease, error) {
-	apiURL := "https://api.github.com/repos/bessarabov/mac2mqtt/releases/latest"
+	apiURL := "https://api.github.com/repos/roflmao/mac2mqtt/releases/latest"
 
 	client := &http.Client{
 		Timeout: 30 * time.Second,
