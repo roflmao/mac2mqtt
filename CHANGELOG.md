@@ -5,6 +5,7 @@
         [Patch]
         * Improve Wi-Fi SSID detection and add Location Services instructions
         * Fix Wi-Fi SSID detection using system_profiler
+        * Document Wi-Fi SSID limitations on modern macOS (requires Developer certificate)
 
 2.0.2   2025-12-27
         [Patch]
