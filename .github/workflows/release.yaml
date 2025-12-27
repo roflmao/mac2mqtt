@@ -25,11 +25,15 @@ jobs:
 
       - name: Build arm64 (Apple Silicon Macs)
         run: |
-          GOOS=darwin GOARCH=arm64 go build -o mac2mqtt_${{ github.ref_name }}_arm64 .
+          VERSION=${{ github.ref_name }}
+          GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.version=${VERSION}" -o mac2mqtt-darwin-arm64 .
+          chmod +x mac2mqtt-darwin-arm64
 
       - name: Build x86_64 (Intel-based Macs)
         run: |
-          GOOS=darwin GOARCH=amd64 go build -o mac2mqtt_${{ github.ref_name }}_x86_64 .
+          VERSION=${{ github.ref_name }}
+          GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.version=${VERSION}" -o mac2mqtt-darwin-amd64 .
+          chmod +x mac2mqtt-darwin-amd64
 
 
       - name: Create release_description.txt
@@ -41,5 +45,5 @@ jobs:
         with:
           body_path: release_description.txt
           files: |
-            mac2mqtt_${{ github.ref_name }}_x86_64
-            mac2mqtt_${{ github.ref_name }}_arm64
+            mac2mqtt-darwin-amd64
+            mac2mqtt-darwin-arm64
