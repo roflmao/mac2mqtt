@@ -1,12 +1,6 @@
 # Changelog for mac2mqtt
 
 ```
-1.0.12   2025-12-27
-        [Patch]
-        * Fix release script and clean up CHANGELOG for v2.0.0
-        * [skip ci] Update CHANGELOG for v2.0.1
-        * Fix release description script to handle v prefix in tags
-
 2.0.0   2025-12-27
         [Major]
         * Add system uptime monitoring with relative time display in Home Assistant
