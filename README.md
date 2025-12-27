@@ -75,13 +75,23 @@ Originally created for [Home Assistant](https://www.home-assistant.io/) integrat
 
 ### Recommended Directory Structure
 
-Place the executable and configuration file in your home directory:
+**Option 1: System-wide (recommended for LaunchDaemon):**
+
+```
+/usr/local/mac2mqtt/
+├── mac2mqtt
+└── mac2mqtt.yaml
+```
+
+**Option 2: User home directory:**
 
 ```
 /Users/USERNAME/mac2mqtt/
 ├── mac2mqtt
 └── mac2mqtt.yaml
 ```
+
+For running as a system service (LaunchDaemon), Option 1 is recommended as it doesn't require username customization in the plist file.
 
 ## Installation
 
@@ -91,11 +101,16 @@ Place the executable and configuration file in your home directory:
 2. Download the correct file for your Mac:
    * `mac2mqtt_VERSION_arm64` - Apple Silicon (M1, M2, M3, M4)
    * `mac2mqtt_VERSION_x86_64` - Intel-based Macs
-3. Make the file executable:
+3. Create the directory and prepare the binary:
    ```bash
+   mkdir -p ~/mac2mqtt
+   cd ~/Downloads
    chmod +x mac2mqtt_VERSION_ARCH
+   xattr -d com.apple.quarantine mac2mqtt_VERSION_ARCH  # Remove macOS quarantine
    mv mac2mqtt_VERSION_ARCH ~/mac2mqtt/mac2mqtt
    ```
+
+**Important:** The `xattr -d com.apple.quarantine` command is required to remove the macOS security quarantine flag from downloaded files. Without this step, macOS will prevent the binary from running.
 
 ### Option 2: Build from Source
 
@@ -302,13 +317,44 @@ $ ./mac2mqtt
 2021/04/12 10:37:29 Sending 'true' to topic: mac2mqtt/bessarabov-osx/status/alive
 ```
 
-### Running as a Background Service
+### Running as a Background Service (LaunchDaemon)
 
-To automatically start mac2mqtt on system boot:
+To automatically start mac2mqtt on system boot, you'll install it as a system service using launchd.
 
-1. Ensure `mac2mqtt.yaml` and `mac2mqtt` are in `/Users/USERNAME/mac2mqtt/`
+#### Installation Options
 
-2. Create the LaunchDaemon plist file at `/Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist`:
+**Option A: System-wide installation (Recommended)**
+
+This installs mac2mqtt in `/usr/local/mac2mqtt/` - no username customization needed.
+
+```bash
+# Create the system directory and copy files
+sudo mkdir -p /usr/local/mac2mqtt
+sudo cp mac2mqtt /usr/local/mac2mqtt/
+sudo cp mac2mqtt.yaml /usr/local/mac2mqtt/
+sudo chmod +x /usr/local/mac2mqtt/mac2mqtt
+
+# Copy the plist template (no customization needed!)
+sudo cp com.bessarabov.mac2mqtt.plist.template /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+sudo chown root:wheel /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+sudo chmod 644 /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+
+# Load the service
+sudo launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+```
+
+**Option B: User home directory installation**
+
+Keep files in your home directory (e.g., `~/mac2mqtt/`). You'll need to customize the plist:
+
+```bash
+# Edit the plist template
+sudo cp com.bessarabov.mac2mqtt.plist.template /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+sudo nano /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+# Change /usr/local/mac2mqtt/ to /Users/YOUR_USERNAME/mac2mqtt/ in both Program and WorkingDirectory
+```
+
+Or create the file manually at `/Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -321,6 +367,10 @@ To automatically start mac2mqtt on system boot:
         <string>/Users/USERNAME/mac2mqtt/mac2mqtt</string>
         <key>WorkingDirectory</key>
         <string>/Users/USERNAME/mac2mqtt/</string>
+        <key>StandardOutPath</key>
+        <string>/tmp/mac2mqtt.log</string>
+        <key>StandardErrorPath</key>
+        <string>/tmp/mac2mqtt.err</string>
         <key>RunAtLoad</key>
         <true/>
         <key>KeepAlive</key>
@@ -331,17 +381,40 @@ To automatically start mac2mqtt on system boot:
 
 **Important:** Replace `USERNAME` with your actual macOS username.
 
-3. Load the service:
+**Configuration Notes:**
+- `RunAtLoad` - Service starts automatically at boot
+- `KeepAlive` - Service automatically restarts if it crashes
+- `StandardOutPath` and `StandardErrorPath` - Log files for debugging (optional but recommended)
+
+3. Set correct permissions and load the service:
 
 ```bash
+sudo chown root:wheel /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+sudo chmod 644 /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 sudo launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 ```
 
-4. To stop the service:
+4. Managing the service:
 
 ```bash
+# Restart the service
+sudo launchctl kickstart -k system/com.bessarabov.mac2mqtt
+
+# Stop the service (unload completely)
 sudo launchctl unload /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+
+# Start the service (if previously unloaded)
+sudo launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+
+# Check service status
+sudo launchctl print system/com.bessarabov.mac2mqtt
+
+# View logs (if logging is enabled in plist)
+tail -f /tmp/mac2mqtt.err
+tail -f /tmp/mac2mqtt.log
 ```
+
+**Note:** The `launchctl stop` command won't work because `KeepAlive` is set to `true` - the service will immediately restart. To stop it, you must use `unload`.
 
 ## Home Assistant Integration
 
@@ -595,6 +668,57 @@ mosquitto_pub -t "mac2mqtt/your-mac/command/displaysleep" -m "displaysleep"
 
 ## Troubleshooting
 
+### LaunchDaemon Service Won't Start
+
+If the LaunchDaemon fails to start (exit code 78 or similar):
+
+1. **Check execute permissions** on the binary:
+   ```bash
+   # For system-wide installation
+   ls -la /usr/local/mac2mqtt/mac2mqtt
+   # OR for user directory installation
+   ls -la ~/mac2mqtt/mac2mqtt
+   ```
+   Should show `-rwxr-xr-x`. If not, fix with:
+   ```bash
+   # For system-wide installation
+   sudo chmod +x /usr/local/mac2mqtt/mac2mqtt
+   # OR for user directory installation
+   chmod +x ~/mac2mqtt/mac2mqtt
+   ```
+
+2. **Remove macOS quarantine flag** from downloaded binaries:
+   ```bash
+   # For system-wide installation
+   xattr -l /usr/local/mac2mqtt/mac2mqtt
+   # OR for user directory installation
+   xattr -l ~/mac2mqtt/mac2mqtt
+   ```
+   If you see `com.apple.quarantine`, remove it:
+   ```bash
+   # For system-wide installation
+   sudo xattr -d com.apple.quarantine /usr/local/mac2mqtt/mac2mqtt
+   # OR for user directory installation
+   xattr -d com.apple.quarantine ~/mac2mqtt/mac2mqtt
+   ```
+
+3. **Check service status**:
+   ```bash
+   sudo launchctl print system/com.bessarabov.mac2mqtt
+   ```
+   Look for `last exit code` and `state` fields.
+
+4. **View logs** (if StandardOutPath/StandardErrorPath are configured):
+   ```bash
+   cat /tmp/mac2mqtt.err
+   cat /tmp/mac2mqtt.log
+   ```
+
+5. **Restart the service** after fixing issues:
+   ```bash
+   sudo launchctl kickstart -k system/com.bessarabov.mac2mqtt
+   ```
+
 ### Connection Issues
 
 If mac2mqtt cannot connect to MQTT:
@@ -603,6 +727,7 @@ If mac2mqtt cannot connect to MQTT:
 2. Check `mac2mqtt.yaml` settings (IP, port, credentials)
 3. Test connectivity: `ping YOUR_MQTT_IP`
 4. Verify firewall settings allow MQTT traffic (default port 1883)
+5. Check logs for connection errors
 
 ### Permission Issues
 
@@ -611,6 +736,17 @@ If commands don't work:
 1. Ensure Terminal/mac2mqtt has accessibility permissions
 2. Go to System Settings > Privacy & Security > Accessibility
 3. Add Terminal or the mac2mqtt binary to the allowed list
+
+### Binary Won't Execute (Killed: 9)
+
+If you see `Killed: 9` when trying to run the binary:
+
+1. This is macOS Gatekeeper blocking the downloaded file
+2. Remove the quarantine attribute:
+   ```bash
+   xattr -d com.apple.quarantine ~/mac2mqtt/mac2mqtt
+   ```
+3. Alternatively, you can right-click the binary in Finder and select "Open" to approve it
 
 ### Finding Your Computer Name
 

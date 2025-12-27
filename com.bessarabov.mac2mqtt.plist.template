@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <!-- Service identifier - must match the filename -->
+        <key>Label</key>
+        <string>com.bessarabov.mac2mqtt</string>
+
+        <!-- Full path to the mac2mqtt executable -->
+        <key>Program</key>
+        <string>/usr/local/mac2mqtt/mac2mqtt</string>
+
+        <!-- Working directory where mac2mqtt.yaml is located -->
+        <key>WorkingDirectory</key>
+        <string>/usr/local/mac2mqtt/</string>
+
+        <!-- Optional: Log files for stdout (recommended for debugging) -->
+        <key>StandardOutPath</key>
+        <string>/tmp/mac2mqtt.log</string>
+
+        <!-- Optional: Log files for stderr (recommended for debugging) -->
+        <key>StandardErrorPath</key>
+        <string>/tmp/mac2mqtt.err</string>
+
+        <!-- Start the service automatically when the system boots -->
+        <key>RunAtLoad</key>
+        <true/>
+
+        <!-- Automatically restart the service if it crashes -->
+        <key>KeepAlive</key>
+        <true/>
+    </dict>
+</plist>
