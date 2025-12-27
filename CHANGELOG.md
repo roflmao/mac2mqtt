@@ -1,6 +1,11 @@
 # Changelog for mac2mqtt
 
 ```
+1.0.11   2025-12-27
+        [Patch]
+        * Fix release.yaml to use correct binary names for auto-update
+        * [skip ci] Add v2.0.0 changelog entry
+
 2.0.0   2025-12-27
         [Major]
         * Add system uptime monitoring with relative time display in Home Assistant
