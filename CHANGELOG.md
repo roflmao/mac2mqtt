@@ -1,6 +1,10 @@
 # Changelog for mac2mqtt
 
 ```
+1.0.7   2025-12-27
+        [Patch]
+        * Add system uptime monitoring
+
 1.0.6   2025-12-27
         [Patch]
         * Improve installation and LaunchDaemon documentation
