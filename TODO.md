@@ -17,6 +17,11 @@ This document tracks potential features and enhancements for mac2mqtt.
 - [x] Debug mode
 - [x] Dry-run mode for testing
 - [x] Exponential backoff retry on connection failure
+- [x] Network activity monitoring (upload/download rates)
+- [x] System uptime monitoring
+- [x] Wi-Fi SSID monitoring
+- [x] Wi-Fi signal strength monitoring
+- [x] Wi-Fi IP address monitoring
 
 ## Planned Features
 
@@ -53,7 +58,7 @@ This document tracks potential features and enhancements for mac2mqtt.
   - Fan speeds
   - Requires powermetrics or third-party tools
 
-- [ ] **Network Activity**
+- [x] **Network Activity**
   - Upload rate
   - Download rate
   - Network interface statistics
