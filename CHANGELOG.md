@@ -1,6 +1,11 @@
 # Changelog for mac2mqtt
 
 ```
+2.0.5   2026-01-08
+        [Patch]
+        * Update README.md with network activity monitoring documentation
+        * Add network activity monitoring feature
+
 2.0.4   2025-12-27
         [Patch]
         * Document Wi-Fi SSID limitations on modern macOS
