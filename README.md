@@ -18,6 +18,9 @@ The following information is published to MQTT:
 * Wi-Fi network name (SSID)
 * Wi-Fi signal strength (RSSI)
 * Wi-Fi IP address
+* Network upload rate (KB/s)
+* Network download rate (KB/s)
+* System uptime
 
 ### Remote Control
 
@@ -52,6 +55,8 @@ mac2mqtt publishes the following metrics to MQTT:
 | **Wi-Fi Signal Strength** | `mac2mqtt/HOSTNAME/status/wifi_signal_strength` | dBm value | Every 60 seconds | Wi-Fi signal strength (RSSI value, typically -30 to -90) |
 | **Wi-Fi IP Address** | `mac2mqtt/HOSTNAME/status/wifi_ip` | IPv4 address | Every 60 seconds | Current IPv4 address of the primary Wi-Fi interface (en0) |
 | **Last Boot Time** | `mac2mqtt/HOSTNAME/status/uptime` | ISO 8601 timestamp | Every 60 seconds | Timestamp of when the system last booted (displays as relative time in Home Assistant) |
+| **Network Upload Rate** | `mac2mqtt/HOSTNAME/status/network_upload_rate` | KB/s (decimal) | Every 2 seconds | Current upload rate in kilobytes per second |
+| **Network Download Rate** | `mac2mqtt/HOSTNAME/status/network_download_rate` | KB/s (decimal) | Every 2 seconds | Current download rate in kilobytes per second |
 
 **Notes:**
 - `HOSTNAME` is automatically derived from your macOS computer's hostname (e.g., `bessarabov-osx`)
@@ -444,6 +449,8 @@ mac2mqtt supports Home Assistant's MQTT discovery feature. When mac2mqtt connect
 * Sensor - Wi-Fi Signal Strength
 * Sensor - Wi-Fi IP
 * Sensor - Last Boot (timestamp)
+* Sensor - Network Upload (KB/s)
+* Sensor - Network Download (KB/s)
 * Switch - Mute
 * Number - Volume (0-100)
 * Button - Sleep
@@ -665,6 +672,30 @@ Timestamp of when the system last booted.
 **Example values:** `2025-12-27T19:10:18Z`
 
 **Note:** Home Assistant displays this as relative time (e.g., "2 hours ago").
+
+#### `mac2mqtt/COMPUTER_NAME/status/network_upload_rate`
+
+**Values:** Decimal number (KB/s)
+
+Current network upload rate in kilobytes per second.
+
+**Update frequency:** Every 2 seconds
+
+**Example values:** `0.00`, `12.45`, `156.78`
+
+**Note:** Rate is calculated by comparing network interface statistics over time. First measurement will always be `0.00`.
+
+#### `mac2mqtt/COMPUTER_NAME/status/network_download_rate`
+
+**Values:** Decimal number (KB/s)
+
+Current network download rate in kilobytes per second.
+
+**Update frequency:** Every 2 seconds
+
+**Example values:** `0.00`, `234.56`, `1024.32`
+
+**Note:** Rate is calculated by comparing network interface statistics over time. First measurement will always be `0.00`.
 
 ### Command Topics
 

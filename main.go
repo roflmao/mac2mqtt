@@ -28,6 +28,18 @@ var (
 	dryRunMode bool
 )
 
+// networkStats holds network interface statistics for rate calculation
+type networkStats struct {
+	bytesIn    int64
+	bytesOut   int64
+	timestamp  time.Time
+	uploadRate float64   // bytes per second
+	downloadRate float64 // bytes per second
+	mu         sync.Mutex
+}
+
+var netStats = &networkStats{}
+
 type config struct {
 	Ip         string `yaml:"mqtt_ip"`
 	Port       string `yaml:"mqtt_port"`
@@ -415,6 +427,36 @@ func publishDiscoveryMessages(client mqtt.Client) {
 	}
 	publishConfig(client, "sensor", hostname+"_uptime", uptimeConfig)
 
+	// Sensor for Network Upload Rate
+	networkUploadConfig := map[string]interface{}{
+		"name":                  "Network Upload",
+		"unique_id":             "mac2mqtt_" + hostname + "_network_upload_rate",
+		"state_topic":           prefix + "/status/network_upload_rate",
+		"unit_of_measurement":   "KB/s",
+		"icon":                  "mdi:upload",
+		"state_class":           "measurement",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "sensor", hostname+"_network_upload_rate", networkUploadConfig)
+
+	// Sensor for Network Download Rate
+	networkDownloadConfig := map[string]interface{}{
+		"name":                  "Network Download",
+		"unique_id":             "mac2mqtt_" + hostname + "_network_download_rate",
+		"state_topic":           prefix + "/status/network_download_rate",
+		"unit_of_measurement":   "KB/s",
+		"icon":                  "mdi:download",
+		"state_class":           "measurement",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "sensor", hostname+"_network_download_rate", networkDownloadConfig)
+
 	log.Println("Published Home Assistant MQTT discovery messages")
 }
 
@@ -453,6 +495,7 @@ var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	updateWiFiSignalStrength(client)
 	updateWiFiIPAddress(client)
 	updateSystemUptime(client)
+	updateNetworkActivity(client)
 
 	listen(client, getTopicPrefix()+"/command/#")
 }
@@ -1081,6 +1124,137 @@ func findAirportPath() string {
 	return airportPath
 }
 
+// getNetworkInterfaceStats retrieves current byte counts for the Wi-Fi interface
+// Returns bytesIn, bytesOut, error
+func getNetworkInterfaceStats() (int64, int64, error) {
+	iface := getWiFiInterface()
+	if iface == "" {
+		return 0, 0, fmt.Errorf("no Wi-Fi interface found")
+	}
+
+	cmd := exec.Command("/usr/sbin/netstat", "-ibn")
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to run netstat: %w", err)
+	}
+
+	// Parse netstat output to find our interface
+	// Format: Name Mtu Network Address Ipkts Ierrs Ibytes Opkts Oerrs Obytes Coll
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) < 10 {
+			continue
+		}
+
+		// Check if this line is for our interface (and not a link# line)
+		if fields[0] == iface && !strings.Contains(fields[2], "Link#") {
+			// fields[6] is Ibytes (received), fields[9] is Obytes (sent)
+			ibytes, err1 := strconv.ParseInt(fields[6], 10, 64)
+			obytes, err2 := strconv.ParseInt(fields[9], 10, 64)
+
+			if err1 != nil || err2 != nil {
+				continue
+			}
+
+			return ibytes, obytes, nil
+		}
+	}
+
+	return 0, 0, fmt.Errorf("interface %s not found in netstat output", iface)
+}
+
+// updateNetworkStats updates the network statistics and calculates rates
+func updateNetworkStats() {
+	netStats.mu.Lock()
+	defer netStats.mu.Unlock()
+
+	bytesIn, bytesOut, err := getNetworkInterfaceStats()
+	if err != nil {
+		if debugMode {
+			log.Printf("Warning: failed to get network stats: %v", err)
+		}
+		// Reset rates on error
+		netStats.uploadRate = 0
+		netStats.downloadRate = 0
+		return
+	}
+
+	now := time.Now()
+
+	// If this is the first measurement, just store values
+	if netStats.timestamp.IsZero() {
+		netStats.bytesIn = bytesIn
+		netStats.bytesOut = bytesOut
+		netStats.timestamp = now
+		netStats.uploadRate = 0
+		netStats.downloadRate = 0
+		return
+	}
+
+	// Calculate time difference in seconds
+	timeDiff := now.Sub(netStats.timestamp).Seconds()
+	if timeDiff <= 0 {
+		return
+	}
+
+	// Calculate byte differences
+	bytesDiffIn := bytesIn - netStats.bytesIn
+	bytesDiffOut := bytesOut - netStats.bytesOut
+
+	// Handle counter overflow or reset (negative difference)
+	if bytesDiffIn < 0 {
+		bytesDiffIn = 0
+	}
+	if bytesDiffOut < 0 {
+		bytesDiffOut = 0
+	}
+
+	// Calculate rates in bytes per second
+	netStats.downloadRate = float64(bytesDiffIn) / timeDiff
+	netStats.uploadRate = float64(bytesDiffOut) / timeDiff
+
+	// Update stored values
+	netStats.bytesIn = bytesIn
+	netStats.bytesOut = bytesOut
+	netStats.timestamp = now
+}
+
+// getNetworkUploadRate returns the current upload rate in KB/s
+func getNetworkUploadRate() string {
+	netStats.mu.Lock()
+	defer netStats.mu.Unlock()
+
+	// Convert bytes/s to KB/s and round to 2 decimal places
+	kbps := netStats.uploadRate / 1024.0
+	return fmt.Sprintf("%.2f", kbps)
+}
+
+// getNetworkDownloadRate returns the current download rate in KB/s
+func getNetworkDownloadRate() string {
+	netStats.mu.Lock()
+	defer netStats.mu.Unlock()
+
+	// Convert bytes/s to KB/s and round to 2 decimal places
+	kbps := netStats.downloadRate / 1024.0
+	return fmt.Sprintf("%.2f", kbps)
+}
+
+// updateNetworkActivity publishes network activity to MQTT
+func updateNetworkActivity(client mqtt.Client) {
+	// First update the stats
+	updateNetworkStats()
+
+	// Then publish the rates
+	prefix := getTopicPrefix()
+
+	uploadToken := publishMQTT(client, prefix+"/status/network_upload_rate", 0, false, getNetworkUploadRate())
+	uploadToken.Wait()
+
+	downloadToken := publishMQTT(client, prefix+"/status/network_download_rate", 0, false, getNetworkDownloadRate())
+	downloadToken.Wait()
+}
+
 // GitHubRelease represents a GitHub release response
 type GitHubRelease struct {
 	TagName    string        `json:"tag_name"`
@@ -1445,6 +1619,7 @@ func main() {
 				updateVolume(mqttClient)
 				updateMute(mqttClient)
 				updateActiveApp(mqttClient)
+				updateNetworkActivity(mqttClient)
 
 			case _ = <-batteryTicker.C:
 				updateBattery(mqttClient)
