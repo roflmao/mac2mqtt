@@ -229,6 +229,18 @@ func commandShutdown() {
 
 }
 
+func commandReboot() {
+
+	if os.Getuid() == 0 {
+		// if the program is run by root user we are doing the most reliable reboot
+		runCommand("shutdown", "-r", "now")
+	} else {
+		// if the program is run by ordinary user we are trying to reboot, but it may fail if the other user is logged in
+		runCommand("/usr/bin/osascript", "-e", "tell app \"System Events\" to restart")
+	}
+
+}
+
 var messagePubHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 	log.Printf("Received message: %s from topic: %s\n", msg.Payload(), msg.Topic())
 }
@@ -345,6 +357,20 @@ func publishDiscoveryMessages(client mqtt.Client) {
 		"device":                device,
 	}
 	publishConfig(client, "button", hostname+"_shutdown", shutdownConfig)
+
+	// Button for reboot
+	rebootConfig := map[string]interface{}{
+		"name":                  "Reboot",
+		"unique_id":             "mac2mqtt_" + hostname + "_reboot",
+		"command_topic":         prefix + "/command/reboot",
+		"payload_press":         "reboot",
+		"icon":                  "mdi:restart",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "button", hostname+"_reboot", rebootConfig)
 
 	// Button for display sleep
 	displaysleepConfig := map[string]interface{}{
@@ -696,6 +722,14 @@ func listen(client mqtt.Client, topic string) {
 
 			if string(msg.Payload()) == "shutdown" {
 				commandShutdown()
+			}
+
+		}
+
+		if msg.Topic() == getTopicPrefix()+"/command/reboot" {
+
+			if string(msg.Payload()) == "reboot" {
+				commandReboot()
 			}
 
 		}
