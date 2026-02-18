@@ -1,6 +1,10 @@
 # Changelog for mac2mqtt
 
 ```
+2.0.6   2026-02-18
+        [Patch]
+        * Add reboot command
+
 2.0.5   2026-01-08
         [Patch]
         * Update README.md with network activity monitoring documentation
