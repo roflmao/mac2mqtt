@@ -195,7 +195,7 @@ This document tracks potential features and enhancements for mac2mqtt.
 
 ### System Control
 
-- [ ] **Restart Command**
+- [x] **Restart Command**
   - Restart the computer
 
 - [ ] **Log Out Command**

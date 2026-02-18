@@ -32,6 +32,7 @@ Send commands via MQTT to control your Mac:
 | **Mute/Unmute** | `mac2mqtt/HOSTNAME/command/mute` | `true` / `false` | Mute or unmute system audio |
 | **Sleep** | `mac2mqtt/HOSTNAME/command/sleep` | `sleep` | Put computer to sleep |
 | **Shutdown** | `mac2mqtt/HOSTNAME/command/shutdown` | `shutdown` | Shut down computer |
+| **Reboot** | `mac2mqtt/HOSTNAME/command/reboot` | `reboot` | Reboot computer |
 | **Display Sleep** | `mac2mqtt/HOSTNAME/command/displaysleep` | `displaysleep` | Turn off display only |
 
 ### Home Assistant Integration
@@ -455,6 +456,7 @@ mac2mqtt supports Home Assistant's MQTT discovery feature. When mac2mqtt connect
 * Number - Volume (0-100)
 * Button - Sleep
 * Button - Shutdown
+* Button - Reboot
 * Button - Display Sleep
 
 All entities are grouped under a single device in Home Assistant using your computer's hostname.
@@ -749,6 +751,21 @@ Shut down the computer.
 **Example:**
 ```bash
 mosquitto_pub -t "mac2mqtt/your-mac/command/shutdown" -m "shutdown"
+```
+
+#### `mac2mqtt/COMPUTER_NAME/command/reboot`
+
+**Value:** `reboot`
+
+Reboot the computer.
+
+**Behavior:**
+* If run as `root` - Always reboots
+* If run as regular user - May fail if other users are logged in
+
+**Example:**
+```bash
+mosquitto_pub -t "mac2mqtt/your-mac/command/reboot" -m "reboot"
 ```
 
 #### `mac2mqtt/COMPUTER_NAME/command/displaysleep`
