@@ -126,6 +126,15 @@ func getCommandOutput(name string, arg ...string) string {
 	return stdoutStr
 }
 
+func tryGetCommandOutput(name string, arg ...string) (string, error) {
+	cmd := exec.Command(name, arg...)
+	stdout, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSuffix(string(stdout), "\n"), nil
+}
+
 func getMuteStatus() bool {
 	output := getCommandOutput("/usr/bin/osascript", "-e", "output muted of (get volume settings)")
 
@@ -483,6 +492,51 @@ func publishDiscoveryMessages(client mqtt.Client) {
 	}
 	publishConfig(client, "sensor", hostname+"_network_download_rate", networkDownloadConfig)
 
+	// Sensor for Battery Temperature
+	battTempConfig := map[string]interface{}{
+		"name":                  "Battery Temperature",
+		"unique_id":             "mac2mqtt_" + hostname + "_battery_temperature",
+		"state_topic":           prefix + "/status/battery_temperature",
+		"unit_of_measurement":   "°C",
+		"device_class":          "temperature",
+		"icon":                  "mdi:thermometer",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "sensor", hostname+"_battery_temperature", battTempConfig)
+
+	// Sensor for CPU Temperature
+	cpuTempConfig := map[string]interface{}{
+		"name":                  "CPU Temperature",
+		"unique_id":             "mac2mqtt_" + hostname + "_cpu_temperature",
+		"state_topic":           prefix + "/status/cpu_temperature",
+		"unit_of_measurement":   "°C",
+		"device_class":          "temperature",
+		"icon":                  "mdi:thermometer",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "sensor", hostname+"_cpu_temperature", cpuTempConfig)
+
+	// Sensor for Fan Speed
+	fanSpeedConfig := map[string]interface{}{
+		"name":                  "Fan Speed",
+		"unique_id":             "mac2mqtt_" + hostname + "_fan_speed",
+		"state_topic":           prefix + "/status/fan_speed",
+		"unit_of_measurement":   "rpm",
+		"icon":                  "mdi:fan",
+		"state_class":           "measurement",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "sensor", hostname+"_fan_speed", fanSpeedConfig)
+
 	log.Println("Published Home Assistant MQTT discovery messages")
 }
 
@@ -522,6 +576,7 @@ var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	updateWiFiIPAddress(client)
 	updateSystemUptime(client)
 	updateNetworkActivity(client)
+	updateTemperatures(client)
 
 	listen(client, getTopicPrefix()+"/command/#")
 }
@@ -1289,6 +1344,90 @@ func updateNetworkActivity(client mqtt.Client) {
 	downloadToken.Wait()
 }
 
+func getBatteryTemperature() string {
+	output, err := tryGetCommandOutput("/usr/sbin/ioreg", "-rn", "AppleSmartBattery", "-k", "Temperature")
+	if err != nil {
+		return ""
+	}
+
+	r := regexp.MustCompile(`"Temperature" = (\d+)`)
+	matches := r.FindStringSubmatch(output)
+	if len(matches) < 2 {
+		return ""
+	}
+
+	raw, err := strconv.ParseFloat(matches[1], 64)
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%.1f", raw/100.0)
+}
+
+var powermetricsWarningOnce sync.Once
+
+func getPowermetricsOutput() string {
+	if os.Getuid() != 0 {
+		powermetricsWarningOnce.Do(func() {
+			log.Println("CPU temperature and fan speed unavailable: powermetrics requires root privileges")
+		})
+		return ""
+	}
+
+	output, err := tryGetCommandOutput("/usr/bin/powermetrics", "--samplers", "smc", "-n", "1", "-i", "1000")
+	if err != nil {
+		powermetricsWarningOnce.Do(func() {
+			log.Printf("CPU temperature and fan speed unavailable: powermetrics failed: %v", err)
+		})
+		return ""
+	}
+
+	return output
+}
+
+func parseCPUTemperature(pmOutput string) string {
+	r := regexp.MustCompile(`CPU die temperature: ([\d.]+) C`)
+	matches := r.FindStringSubmatch(pmOutput)
+	if len(matches) < 2 {
+		return ""
+	}
+	return matches[1]
+}
+
+func parseFanSpeed(pmOutput string) string {
+	r := regexp.MustCompile(`Fan(?:\s+\d+)?: (\d+) rpm`)
+	matches := r.FindStringSubmatch(pmOutput)
+	if len(matches) < 2 {
+		return ""
+	}
+	return matches[1]
+}
+
+func updateTemperatures(client mqtt.Client) {
+	prefix := getTopicPrefix()
+
+	battTemp := getBatteryTemperature()
+	if battTemp != "" {
+		token := publishMQTT(client, prefix+"/status/battery_temperature", 0, false, battTemp)
+		token.Wait()
+	}
+
+	pmOutput := getPowermetricsOutput()
+	if pmOutput != "" {
+		cpuTemp := parseCPUTemperature(pmOutput)
+		if cpuTemp != "" {
+			token := publishMQTT(client, prefix+"/status/cpu_temperature", 0, false, cpuTemp)
+			token.Wait()
+		}
+
+		fanSpeed := parseFanSpeed(pmOutput)
+		if fanSpeed != "" {
+			token := publishMQTT(client, prefix+"/status/fan_speed", 0, false, fanSpeed)
+			token.Wait()
+		}
+	}
+}
+
 // GitHubRelease represents a GitHub release response
 type GitHubRelease struct {
 	TagName    string        `json:"tag_name"`
@@ -1661,6 +1800,7 @@ func main() {
 				updateWiFiSignalStrength(mqttClient)
 				updateWiFiIPAddress(mqttClient)
 				updateSystemUptime(mqttClient)
+				updateTemperatures(mqttClient)
 
 			case _ = <-updateTicker.C:
 				if autoUpdateEnabled {

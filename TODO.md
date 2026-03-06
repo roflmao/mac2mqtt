@@ -51,12 +51,10 @@ This document tracks potential features and enhancements for mac2mqtt.
   - Free RAM
   - Memory pressure
 
-- [ ] **Temperature Sensors**
-  - CPU temperature
-  - GPU temperature
+- [x] **Temperature Sensors**
+  - CPU temperature (requires root for powermetrics)
   - Battery temperature
-  - Fan speeds
-  - Requires powermetrics or third-party tools
+  - Fan speeds (requires root for powermetrics)
 
 - [x] **Network Activity**
   - Upload rate
