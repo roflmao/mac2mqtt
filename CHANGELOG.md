@@ -1,6 +1,10 @@
 # Changelog for mac2mqtt
 
 ```
+2.0.7   2026-03-06
+        [Patch]
+        * Add temperature sensors monitoring
+
 2.0.6   2026-02-18
         [Patch]
         * Add reboot command
