@@ -259,7 +259,7 @@ If an update causes issues, you can rollback to the previous version:
 sudo launchctl unload /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 
 # Restore the backup
-mv /usr/local/mac2mqtt/mac2mqtt.old /usr/local/mac2mqtt/mac2mqtt
+sudo mv /usr/local/mac2mqtt/mac2mqtt.old /usr/local/mac2mqtt/mac2mqtt
 
 # Restart the service
 sudo launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
