@@ -833,8 +833,12 @@ If the LaunchDaemon fails to start (exit code 78 or similar):
 
 4. **View logs** (if StandardOutPath/StandardErrorPath are configured):
    ```bash
+   # Root mode (LaunchDaemon)
    cat /tmp/mac2mqtt.err
    cat /tmp/mac2mqtt.log
+   # User mode (LaunchAgent)
+   cat ~/Library/Logs/mac2mqtt.err
+   cat ~/Library/Logs/mac2mqtt.log
    ```
 
 5. **Restart the service** after fixing issues:
