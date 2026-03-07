@@ -1,6 +1,22 @@
 # Changelog for mac2mqtt
 
 ```
+2.0.8   2026-03-07
+        [Patch]
+        * Skip config source check when config already exists at install destination
+        * Support upgrade from user to root mode by falling back to ~/mac2mqtt as source
+        * Fix troubleshooting log paths to include user-mode ~/Library/Logs location
+        * Resolve SUDO_USER home via user database instead of hardcoded /Users prefix
+        * Fix manual install note to mention all USERNAME placeholders in agent template
+        * Use ~/Library/Logs for user-mode logs to avoid conflicts with root-owned /tmp files
+        * Remove LaunchAgent plist when switching to root mode to prevent re-load on login
+        * Unload opposite launchd domain and reject ambiguous root+user mode
+        * Add install.sh supporting root (LaunchDaemon) and user (LaunchAgent) modes
+        * Document separate rollback paths for root and user deployment modes
+        * Create ~/Library/LaunchAgents before copying agent plist
+        * Fix rollback mv command missing sudo for root-owned install path
+        * Add LaunchAgent (user mode) deployment option
+
 2.0.7   2026-03-06
         [Patch]
         * Add temperature sensors monitoring
