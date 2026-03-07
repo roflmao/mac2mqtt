@@ -74,8 +74,9 @@ if [[ "$MODE" == "root" ]]; then
     if [[ -n "${SUDO_USER:-}" && -n "${SUDO_UID:-}" ]]; then
         OPPOSITE_PLIST="/Users/${SUDO_USER}/Library/LaunchAgents/${PLIST_NAME}"
         if [[ -f "$OPPOSITE_PLIST" ]]; then
-            info "Unloading existing user-mode LaunchAgent for ${SUDO_USER}..."
+            info "Unloading and removing existing user-mode LaunchAgent for ${SUDO_USER}..."
             launchctl bootout "gui/${SUDO_UID}" "$OPPOSITE_PLIST" 2>/dev/null || true
+            rm "$OPPOSITE_PLIST"
         fi
     fi
 else
