@@ -418,7 +418,7 @@ cp mac2mqtt.yaml ~/mac2mqtt/
 mkdir -p ~/Library/LaunchAgents
 cp com.bessarabov.mac2mqtt.agent.plist.template ~/Library/LaunchAgents/com.bessarabov.mac2mqtt.plist
 nano ~/Library/LaunchAgents/com.bessarabov.mac2mqtt.plist
-# Replace USERNAME with your actual macOS username in Program and WorkingDirectory
+# Replace all four USERNAME occurrences (Program, WorkingDirectory, StandardOutPath, StandardErrorPath)
 
 # Load the service (no sudo needed)
 launchctl load ~/Library/LaunchAgents/com.bessarabov.mac2mqtt.plist
