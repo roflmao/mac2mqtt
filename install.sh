@@ -46,6 +46,11 @@ if [[ "$MODE" == "root" && "$EUID" -ne 0 ]]; then
     die "Root mode requires elevated privileges. Run: sudo $0 [--root]"
 fi
 
+if [[ "$MODE" == "user" && "$EUID" -eq 0 ]]; then
+    die "User mode must not run as root (LaunchAgent would install into root's home).
+Run without sudo:  $0 --user"
+fi
+
 [[ -f "${SCRIPT_DIR}/mac2mqtt" ]] \
     || die "mac2mqtt binary not found in ${SCRIPT_DIR}"
 
@@ -62,7 +67,28 @@ if [[ ! -f "${SCRIPT_DIR}/mac2mqtt.yaml" ]]; then
     fi
 fi
 
-# ── Unload existing service ───────────────────────────────────────────────────
+# ── Unload opposite mode (prevent concurrent duplicate services) ──────────────
+if [[ "$MODE" == "root" ]]; then
+    # Unload the LaunchAgent of the user who invoked sudo, if present.
+    # $SUDO_USER / $SUDO_UID are set by sudo; skip if running as root directly.
+    if [[ -n "${SUDO_USER:-}" && -n "${SUDO_UID:-}" ]]; then
+        OPPOSITE_PLIST="/Users/${SUDO_USER}/Library/LaunchAgents/${PLIST_NAME}"
+        if [[ -f "$OPPOSITE_PLIST" ]]; then
+            info "Unloading existing user-mode LaunchAgent for ${SUDO_USER}..."
+            launchctl bootout "gui/${SUDO_UID}" "$OPPOSITE_PLIST" 2>/dev/null || true
+        fi
+    fi
+else
+    # Cannot unload a system LaunchDaemon without root — abort and guide the user.
+    OPPOSITE_PLIST="/Library/LaunchDaemons/${PLIST_NAME}"
+    if [[ -f "$OPPOSITE_PLIST" ]]; then
+        die "A root-mode LaunchDaemon is already installed. Remove it first, then re-run this script:
+  sudo launchctl unload ${OPPOSITE_PLIST}
+  sudo rm ${OPPOSITE_PLIST}"
+    fi
+fi
+
+# ── Unload existing same-mode service ────────────────────────────────────────
 if [[ -f "$PLIST_DST" ]]; then
     info "Unloading existing service..."
     launchctl unload "$PLIST_DST" 2>/dev/null || true
