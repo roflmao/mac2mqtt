@@ -331,6 +331,20 @@ $ ./mac2mqtt
 2021/04/12 10:37:29 Sending 'true' to topic: mac2mqtt/bessarabov-osx/status/alive
 ```
 
+### Install Script
+
+`install.sh` automates the steps below. Run it from the directory containing the `mac2mqtt` binary and `mac2mqtt.yaml`:
+
+```bash
+# User mode (no root required — CPU temp and fan speed unavailable)
+./install.sh
+
+# Root mode (all features, runs at boot before login)
+sudo ./install.sh
+```
+
+Explicit flags `--user` and `--root` are also accepted. The script will not overwrite an existing `mac2mqtt.yaml` in the install directory.
+
 ### Running as a Background Service
 
 mac2mqtt can run as a background service using macOS launchd. Choose the mode that fits your needs:
