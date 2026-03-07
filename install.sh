@@ -7,7 +7,13 @@
 #   sudo ./install.sh --root   # force root mode
 #        ./install.sh --user   # force user mode
 #
-# Run from the directory containing the mac2mqtt binary and mac2mqtt.yaml.
+# The script looks for mac2mqtt and mac2mqtt.yaml in the same directory as
+# install.sh. When upgrading from user mode to root mode, it automatically
+# falls back to the invoking user's existing ~/mac2mqtt/ install if the binary
+# or config are not found beside install.sh.
+#
+# Upgrade from user mode to root mode:
+#   sudo ./install.sh
 
 set -euo pipefail
 
@@ -28,6 +34,25 @@ elif [[ "$EUID" -eq 0 ]]; then
     MODE=root
 else
     MODE=user
+fi
+
+# ── Resolve invoking user's home (needed for upgrade fallback + opposite-mode cleanup) ──
+if [[ -n "${SUDO_USER:-}" && -n "${SUDO_UID:-}" ]]; then
+    SUDO_USER_HOME=$(eval echo "~${SUDO_USER}")
+else
+    SUDO_USER_HOME=""
+fi
+
+# ── Source directory for binary and config ────────────────────────────────────
+# Default to the script's own directory. In root mode, fall back to the
+# invoking user's existing user-mode install if files are not found here.
+SOURCE_DIR="$SCRIPT_DIR"
+if [[ "$MODE" == "root" && -n "$SUDO_USER_HOME" ]]; then
+    USER_INSTALL_DIR="${SUDO_USER_HOME}/mac2mqtt"
+    if [[ ! -f "${SOURCE_DIR}/mac2mqtt" && -f "${USER_INSTALL_DIR}/mac2mqtt" ]]; then
+        SOURCE_DIR="$USER_INSTALL_DIR"
+        info "Binary not found beside install.sh — using existing user install at ${SOURCE_DIR}"
+    fi
 fi
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -51,19 +76,19 @@ if [[ "$MODE" == "user" && "$EUID" -eq 0 ]]; then
 Run without sudo:  $0 --user"
 fi
 
-[[ -f "${SCRIPT_DIR}/mac2mqtt" ]] \
-    || die "mac2mqtt binary not found in ${SCRIPT_DIR}"
+[[ -f "${SOURCE_DIR}/mac2mqtt" ]] \
+    || die "mac2mqtt binary not found in ${SOURCE_DIR}"
 
 [[ -f "$PLIST_TEMPLATE" ]] \
     || die "plist template not found: ${PLIST_TEMPLATE}"
 
-if [[ ! -f "${SCRIPT_DIR}/mac2mqtt.yaml" ]]; then
-    if [[ -f "${SCRIPT_DIR}/mac2mqtt.yaml.example" ]]; then
+if [[ ! -f "${SOURCE_DIR}/mac2mqtt.yaml" ]]; then
+    if [[ -f "${SOURCE_DIR}/mac2mqtt.yaml.example" ]]; then
         die "mac2mqtt.yaml not found. Create it from the example first:
-  cp \"${SCRIPT_DIR}/mac2mqtt.yaml.example\" \"${SCRIPT_DIR}/mac2mqtt.yaml\"
+  cp \"${SOURCE_DIR}/mac2mqtt.yaml.example\" \"${SOURCE_DIR}/mac2mqtt.yaml\"
   # then edit it with your MQTT broker settings"
     else
-        die "mac2mqtt.yaml not found in ${SCRIPT_DIR}"
+        die "mac2mqtt.yaml not found in ${SOURCE_DIR}"
     fi
 fi
 
@@ -72,8 +97,6 @@ if [[ "$MODE" == "root" ]]; then
     # Unload the LaunchAgent of the user who invoked sudo, if present.
     # $SUDO_USER / $SUDO_UID are set by sudo; skip if running as root directly.
     if [[ -n "${SUDO_USER:-}" && -n "${SUDO_UID:-}" ]]; then
-        # Resolve home directory via the system user database (handles network/mobile accounts)
-        SUDO_USER_HOME=$(eval echo "~${SUDO_USER}")
         OPPOSITE_PLIST="${SUDO_USER_HOME}/Library/LaunchAgents/${PLIST_NAME}"
         if [[ -f "$OPPOSITE_PLIST" ]]; then
             info "Unloading and removing existing user-mode LaunchAgent for ${SUDO_USER}..."
@@ -100,14 +123,14 @@ fi
 # ── Install binary ────────────────────────────────────────────────────────────
 info "Installing binary to ${INSTALL_DIR}..."
 mkdir -p "$INSTALL_DIR"
-cp "${SCRIPT_DIR}/mac2mqtt" "${INSTALL_DIR}/mac2mqtt"
+cp "${SOURCE_DIR}/mac2mqtt" "${INSTALL_DIR}/mac2mqtt"
 chmod +x "${INSTALL_DIR}/mac2mqtt"
 # Remove macOS quarantine flag from downloaded binaries (harmless if absent)
 xattr -d com.apple.quarantine "${INSTALL_DIR}/mac2mqtt" 2>/dev/null || true
 
 # ── Install config (never overwrite an existing file) ─────────────────────────
 if [[ ! -f "${INSTALL_DIR}/mac2mqtt.yaml" ]]; then
-    cp "${SCRIPT_DIR}/mac2mqtt.yaml" "${INSTALL_DIR}/mac2mqtt.yaml"
+    cp "${SOURCE_DIR}/mac2mqtt.yaml" "${INSTALL_DIR}/mac2mqtt.yaml"
     info "Copied mac2mqtt.yaml"
 else
     info "Keeping existing ${INSTALL_DIR}/mac2mqtt.yaml (not overwritten)"
