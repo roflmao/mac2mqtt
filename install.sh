@@ -72,7 +72,9 @@ if [[ "$MODE" == "root" ]]; then
     # Unload the LaunchAgent of the user who invoked sudo, if present.
     # $SUDO_USER / $SUDO_UID are set by sudo; skip if running as root directly.
     if [[ -n "${SUDO_USER:-}" && -n "${SUDO_UID:-}" ]]; then
-        OPPOSITE_PLIST="/Users/${SUDO_USER}/Library/LaunchAgents/${PLIST_NAME}"
+        # Resolve home directory via the system user database (handles network/mobile accounts)
+        SUDO_USER_HOME=$(eval echo "~${SUDO_USER}")
+        OPPOSITE_PLIST="${SUDO_USER_HOME}/Library/LaunchAgents/${PLIST_NAME}"
         if [[ -f "$OPPOSITE_PLIST" ]]; then
             info "Unloading and removing existing user-mode LaunchAgent for ${SUDO_USER}..."
             launchctl bootout "gui/${SUDO_UID}" "$OPPOSITE_PLIST" 2>/dev/null || true
