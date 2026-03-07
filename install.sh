@@ -82,7 +82,7 @@ fi
 [[ -f "$PLIST_TEMPLATE" ]] \
     || die "plist template not found: ${PLIST_TEMPLATE}"
 
-if [[ ! -f "${SOURCE_DIR}/mac2mqtt.yaml" ]]; then
+if [[ ! -f "${SOURCE_DIR}/mac2mqtt.yaml" && ! -f "${INSTALL_DIR}/mac2mqtt.yaml" ]]; then
     if [[ -f "${SOURCE_DIR}/mac2mqtt.yaml.example" ]]; then
         die "mac2mqtt.yaml not found. Create it from the example first:
   cp \"${SOURCE_DIR}/mac2mqtt.yaml.example\" \"${SOURCE_DIR}/mac2mqtt.yaml\"
