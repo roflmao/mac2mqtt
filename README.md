@@ -259,7 +259,7 @@ If an update causes issues, you can rollback to the previous version:
 sudo launchctl unload /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 
 # Restore the backup
-mv /Users/USERNAME/mac2mqtt/mac2mqtt.old /Users/USERNAME/mac2mqtt/mac2mqtt
+mv /usr/local/mac2mqtt/mac2mqtt.old /usr/local/mac2mqtt/mac2mqtt
 
 # Restart the service
 sudo launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
@@ -326,15 +326,23 @@ $ ./mac2mqtt
 2021/04/12 10:37:29 Sending 'true' to topic: mac2mqtt/bessarabov-osx/status/alive
 ```
 
-### Running as a Background Service (LaunchDaemon)
+### Running as a Background Service
 
-To automatically start mac2mqtt on system boot, you'll install it as a system service using launchd.
+mac2mqtt can run as a background service using macOS launchd. Choose the mode that fits your needs:
 
-#### Installation Options
+| Feature | User Mode (LaunchAgent) | Root Mode (LaunchDaemon) |
+|---------|------------------------|--------------------------|
+| Battery, volume, mute, sleep | ✅ | ✅ |
+| Shutdown / reboot | ⚠️ (may fail if other users logged in) | ✅ (always works) |
+| Battery temperature | ✅ | ✅ |
+| CPU temperature | ❌ (requires root) | ✅ |
+| Fan speed | ❌ (requires root) | ✅ |
 
-**Option A: System-wide installation (Recommended)**
+---
 
-This installs mac2mqtt in `/usr/local/mac2mqtt/` - no username customization needed.
+#### Root Mode (LaunchDaemon) — Full feature access
+
+Runs as root at boot, before any user logs in. Installed in `/Library/LaunchDaemons/`.
 
 ```bash
 # Create the system directory and copy files
@@ -343,8 +351,8 @@ sudo cp mac2mqtt /usr/local/mac2mqtt/
 sudo cp mac2mqtt.yaml /usr/local/mac2mqtt/
 sudo chmod +x /usr/local/mac2mqtt/mac2mqtt
 
-# Copy the plist template (no customization needed!)
-sudo cp com.bessarabov.mac2mqtt.plist.template /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+# Copy the daemon plist template (no customization needed for system-wide install)
+sudo cp com.bessarabov.mac2mqtt.daemon.plist.template /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 sudo chown root:wheel /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 sudo chmod 644 /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 
@@ -352,87 +360,69 @@ sudo chmod 644 /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 sudo launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 ```
 
-**Option B: User home directory installation**
-
-Keep files in your home directory (e.g., `~/mac2mqtt/`). You'll need to customize the plist:
+Managing the service:
 
 ```bash
-# Edit the plist template
-sudo cp com.bessarabov.mac2mqtt.plist.template /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
-sudo nano /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
-# Change /usr/local/mac2mqtt/ to /Users/YOUR_USERNAME/mac2mqtt/ in both Program and WorkingDirectory
-```
-
-Or create the file manually at `/Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist`:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-    <dict>
-        <key>Label</key>
-        <string>com.bessarabov.mac2mqtt</string>
-        <key>Program</key>
-        <string>/Users/USERNAME/mac2mqtt/mac2mqtt</string>
-        <key>WorkingDirectory</key>
-        <string>/Users/USERNAME/mac2mqtt/</string>
-        <key>StandardOutPath</key>
-        <string>/tmp/mac2mqtt.log</string>
-        <key>StandardErrorPath</key>
-        <string>/tmp/mac2mqtt.err</string>
-        <key>RunAtLoad</key>
-        <true/>
-        <key>KeepAlive</key>
-        <true/>
-    </dict>
-</plist>
-```
-
-**Important:** Replace `USERNAME` with your actual macOS username.
-
-**Configuration Notes:**
-- `RunAtLoad` - Service starts automatically at boot
-- `KeepAlive` - Service automatically restarts if it crashes
-- `StandardOutPath` and `StandardErrorPath` - Log files for debugging (optional but recommended)
-
-3. Set correct permissions and load the service:
-
-```bash
-sudo chown root:wheel /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
-sudo chmod 644 /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
-sudo launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
-```
-
-4. Managing the service:
-
-**IMPORTANT:** Do NOT use `launchctl stop` or `launchctl start` - they don't work with LaunchDaemons that have `KeepAlive: true`. Use the commands below instead.
-
-**Correct commands:**
-
-```bash
-# Restart the service (most common operation)
+# Restart
 sudo launchctl kickstart -k system/com.bessarabov.mac2mqtt
 
-# Stop the service completely (unload it)
+# Stop completely
 sudo launchctl unload /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 
-# Start the service (after unloading)
+# Start (after unloading)
 sudo launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
 
-# Check if service is running
+# Check status
 sudo launchctl list | grep mac2mqtt
-
-# View detailed service status
 sudo launchctl print system/com.bessarabov.mac2mqtt
 
-# View logs (if logging is enabled in plist)
+# View logs
 tail -f /tmp/mac2mqtt.err
 tail -f /tmp/mac2mqtt.log
 ```
 
-**Why `stop` and `start` don't work:**
-- `launchctl stop` - The service immediately restarts because `KeepAlive: true`
-- `launchctl start` - Only works for LaunchAgents, not LaunchDaemons
+**Note:** Do NOT use `launchctl stop/start` with KeepAlive daemons — use `kickstart`/`unload`/`load` instead.
+
+---
+
+#### User Mode (LaunchAgent) — No root required
+
+Runs as the logged-in user when they log in. Installed in `~/Library/LaunchAgents/`. CPU temperature and fan speed sensors are unavailable (they require root via `powermetrics`).
+
+```bash
+# Create user directory and copy files
+mkdir -p ~/mac2mqtt
+cp mac2mqtt ~/mac2mqtt/
+cp mac2mqtt.yaml ~/mac2mqtt/
+
+# Copy the agent plist template and replace USERNAME with your macOS username
+cp com.bessarabov.mac2mqtt.agent.plist.template ~/Library/LaunchAgents/com.bessarabov.mac2mqtt.plist
+nano ~/Library/LaunchAgents/com.bessarabov.mac2mqtt.plist
+# Replace USERNAME with your actual macOS username in Program and WorkingDirectory
+
+# Load the service (no sudo needed)
+launchctl load ~/Library/LaunchAgents/com.bessarabov.mac2mqtt.plist
+```
+
+Managing the service:
+
+```bash
+# Restart
+launchctl kickstart -k gui/$(id -u)/com.bessarabov.mac2mqtt
+
+# Stop completely
+launchctl unload ~/Library/LaunchAgents/com.bessarabov.mac2mqtt.plist
+
+# Start (after unloading)
+launchctl load ~/Library/LaunchAgents/com.bessarabov.mac2mqtt.plist
+
+# Check status
+launchctl list | grep mac2mqtt
+
+# View logs
+tail -f /tmp/mac2mqtt.err
+tail -f /tmp/mac2mqtt.log
+```
 
 ## Home Assistant Integration
 
