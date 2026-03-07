@@ -252,17 +252,22 @@ No update required
 
 ### Rollback
 
-If an update causes issues, you can rollback to the previous version:
+If an update causes issues, you can rollback to the previous version. The backup is always placed beside the active binary (as `mac2mqtt.old`), so the path depends on your deployment mode.
+
+**Root Mode (LaunchDaemon):**
 
 ```bash
-# Stop the service
 sudo launchctl unload /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
-
-# Restore the backup
 sudo mv /usr/local/mac2mqtt/mac2mqtt.old /usr/local/mac2mqtt/mac2mqtt
-
-# Restart the service
 sudo launchctl load /Library/LaunchDaemons/com.bessarabov.mac2mqtt.plist
+```
+
+**User Mode (LaunchAgent):**
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.bessarabov.mac2mqtt.plist
+mv ~/mac2mqtt/mac2mqtt.old ~/mac2mqtt/mac2mqtt
+launchctl load ~/Library/LaunchAgents/com.bessarabov.mac2mqtt.plist
 ```
 
 Or disable auto-update by setting `auto_update: false` in your config file.
