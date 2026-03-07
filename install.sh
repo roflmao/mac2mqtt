@@ -143,5 +143,5 @@ if [[ "$MODE" == "root" ]]; then
 else
     echo "To check status:  launchctl list | grep mac2mqtt"
     echo "To restart:       launchctl kickstart -k gui/$(id -u)/${LABEL}"
-    echo "To view logs:     tail -f /tmp/mac2mqtt.err"
+    echo "To view logs:     tail -f ~/Library/Logs/mac2mqtt.err"
 fi

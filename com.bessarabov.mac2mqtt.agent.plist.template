@@ -9,9 +9,9 @@
         <key>WorkingDirectory</key>
         <string>/Users/USERNAME/mac2mqtt/</string>
         <key>StandardOutPath</key>
-        <string>/tmp/mac2mqtt.log</string>
+        <string>/Users/USERNAME/Library/Logs/mac2mqtt.log</string>
         <key>StandardErrorPath</key>
-        <string>/tmp/mac2mqtt.err</string>
+        <string>/Users/USERNAME/Library/Logs/mac2mqtt.err</string>
         <key>RunAtLoad</key>
         <true/>
         <key>KeepAlive</key>

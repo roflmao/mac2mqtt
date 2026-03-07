@@ -406,7 +406,7 @@ tail -f /tmp/mac2mqtt.log
 
 #### User Mode (LaunchAgent) — No root required
 
-Runs as the logged-in user when they log in. Installed in `~/Library/LaunchAgents/`. CPU temperature and fan speed sensors are unavailable (they require root via `powermetrics`).
+Runs as the logged-in user when they log in. Installed in `~/Library/LaunchAgents/`. CPU temperature and fan speed sensors are unavailable (they require root via `powermetrics`). Logs are written to `~/Library/Logs/` to avoid conflicts with root-owned `/tmp` log files.
 
 ```bash
 # Create user directory and copy files
@@ -440,8 +440,8 @@ launchctl load ~/Library/LaunchAgents/com.bessarabov.mac2mqtt.plist
 launchctl list | grep mac2mqtt
 
 # View logs
-tail -f /tmp/mac2mqtt.err
-tail -f /tmp/mac2mqtt.log
+tail -f ~/Library/Logs/mac2mqtt.err
+tail -f ~/Library/Logs/mac2mqtt.log
 ```
 
 ## Home Assistant Integration
