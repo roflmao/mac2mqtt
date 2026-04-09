@@ -58,6 +58,7 @@ mac2mqtt publishes the following metrics to MQTT:
 | **Last Boot Time** | `mac2mqtt/HOSTNAME/status/uptime` | ISO 8601 timestamp | Every 60 seconds | Timestamp of when the system last booted (displays as relative time in Home Assistant) |
 | **Network Upload Rate** | `mac2mqtt/HOSTNAME/status/network_upload_rate` | KB/s (decimal) | Every 2 seconds | Current upload rate in kilobytes per second |
 | **Network Download Rate** | `mac2mqtt/HOSTNAME/status/network_download_rate` | KB/s (decimal) | Every 2 seconds | Current download rate in kilobytes per second |
+| **Display On** | `mac2mqtt/HOSTNAME/status/display_on` | `true` / `false` | Every 2 seconds | Whether any display (built-in or external) is currently on |
 
 **Notes:**
 - `HOSTNAME` is automatically derived from your macOS computer's hostname (e.g., `bessarabov-osx`)
@@ -708,6 +709,16 @@ Current network download rate in kilobytes per second.
 **Example values:** `0.00`, `234.56`, `1024.32`
 
 **Note:** Rate is calculated by comparing network interface statistics over time. First measurement will always be `0.00`.
+
+#### `mac2mqtt/COMPUTER_NAME/status/display_on`
+
+**Values:** `true` / `false`
+
+Whether any connected display (built-in or external) is currently on.
+
+**Update frequency:** Every 2 seconds
+
+**Note:** On Intel Macs, uses `IODisplayWrangler` which manages all displays. On Apple Silicon, queries all `IODisplay` instances to detect both built-in and external displays. Reports `true` if any display is active (e.g., in clamshell mode with an external monitor).
 
 ### Command Topics
 

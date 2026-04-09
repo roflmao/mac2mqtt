@@ -381,6 +381,21 @@ func publishDiscoveryMessages(client mqtt.Client) {
 	}
 	publishConfig(client, "button", hostname+"_reboot", rebootConfig)
 
+	// Binary sensor for display on/off status
+	displayOnConfig := map[string]interface{}{
+		"name":                  "Display On",
+		"unique_id":             "mac2mqtt_" + hostname + "_display_on",
+		"state_topic":           prefix + "/status/display_on",
+		"payload_on":            "true",
+		"payload_off":           "false",
+		"icon":                  "mdi:monitor",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "binary_sensor", hostname+"_display_on", displayOnConfig)
+
 	// Button for display sleep
 	displaysleepConfig := map[string]interface{}{
 		"name":                  "Display Sleep",
@@ -577,6 +592,7 @@ var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	updateSystemUptime(client)
 	updateNetworkActivity(client)
 	updateTemperatures(client)
+	updateDisplayOn(client)
 
 	listen(client, getTopicPrefix()+"/command/#")
 }
@@ -858,6 +874,50 @@ func getActiveApp() string {
 
 func updateActiveApp(client mqtt.Client) {
 	token := publishMQTT(client, getTopicPrefix()+"/status/active_app", 0, false, getActiveApp())
+	token.Wait()
+}
+
+func getDisplayOn() bool {
+	// IODisplayWrangler manages all displays on Intel Macs (built-in + external)
+	output, err := tryGetCommandOutput("/usr/sbin/ioreg", "-r", "-d", "1", "-w", "0", "-c", "IODisplayWrangler")
+	if err == nil {
+		r := regexp.MustCompile(`"CurrentPowerState"\s*=\s*(\d+)`)
+		matches := r.FindStringSubmatch(output)
+		if len(matches) > 1 {
+			state, _ := strconv.Atoi(matches[1])
+			return state >= 4
+		}
+	}
+
+	// On Apple Silicon (or if IODisplayWrangler not found), check all IODisplay instances.
+	// IODisplay is the base class for all display types (AppleBacklightDisplay for built-in,
+	// plus external display classes), so this covers both built-in and external displays.
+	output, err = tryGetCommandOutput("/usr/sbin/ioreg", "-r", "-w", "0", "-c", "IODisplay")
+	if err == nil {
+		r := regexp.MustCompile(`"CurrentPowerState"\s*=\s*(\d+)`)
+		allMatches := r.FindAllStringSubmatch(output, -1)
+		for _, matches := range allMatches {
+			if len(matches) > 1 {
+				state, _ := strconv.Atoi(matches[1])
+				if state >= 4 {
+					return true
+				}
+			}
+		}
+		if len(allMatches) > 0 {
+			return false
+		}
+	}
+
+	// Default to true if we can't determine display state
+	if debugMode {
+		log.Println("Warning: unable to determine display power state, defaulting to on")
+	}
+	return true
+}
+
+func updateDisplayOn(client mqtt.Client) {
+	token := publishMQTT(client, getTopicPrefix()+"/status/display_on", 0, false, strconv.FormatBool(getDisplayOn()))
 	token.Wait()
 }
 
@@ -1793,6 +1853,7 @@ func main() {
 				updateMute(mqttClient)
 				updateActiveApp(mqttClient)
 				updateNetworkActivity(mqttClient)
+				updateDisplayOn(mqttClient)
 
 			case _ = <-batteryTicker.C:
 				updateBattery(mqttClient)

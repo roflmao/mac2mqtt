@@ -66,6 +66,10 @@ This document tracks potential features and enhancements for mac2mqtt.
 
 ### Display
 
+- [x] **Display On/Off Status**
+  - Detect if the screen is currently on or off
+  - Binary sensor for Home Assistant
+
 - [ ] **Brightness Control**
   - Get current brightness level
   - Set brightness level
