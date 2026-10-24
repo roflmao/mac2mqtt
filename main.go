@@ -26,7 +26,13 @@ var (
 	hostname   string
 	debugMode  bool
 	dryRunMode bool
+
+	// idleThreshold is the number of seconds without keyboard/mouse input
+	// after which the user is considered inactive
+	idleThreshold = defaultIdleThreshold
 )
+
+const defaultIdleThreshold = 300 // seconds
 
 // networkStats holds network interface statistics for rate calculation
 type networkStats struct {
@@ -41,13 +47,14 @@ type networkStats struct {
 var netStats = &networkStats{}
 
 type config struct {
-	Ip         string `yaml:"mqtt_ip"`
-	Port       string `yaml:"mqtt_port"`
-	User       string `yaml:"mqtt_user"`
-	Password   string `yaml:"mqtt_password"`
-	Debug      bool   `yaml:"debug"`
-	DryRun     bool   `yaml:"dry_run"`
-	AutoUpdate *bool  `yaml:"auto_update"` // Pointer: nil = default true
+	Ip            string `yaml:"mqtt_ip"`
+	Port          string `yaml:"mqtt_port"`
+	User          string `yaml:"mqtt_user"`
+	Password      string `yaml:"mqtt_password"`
+	Debug         bool   `yaml:"debug"`
+	DryRun        bool   `yaml:"dry_run"`
+	AutoUpdate    *bool  `yaml:"auto_update"`    // Pointer: nil = default true
+	IdleThreshold int    `yaml:"idle_threshold"` // Seconds of no input before user is inactive (0 = default 300)
 }
 
 func (c *config) getConfig() *config {
@@ -89,6 +96,13 @@ func (c *config) isAutoUpdateEnabled() bool {
 		return true // Default enabled
 	}
 	return *c.AutoUpdate
+}
+
+func (c *config) getIdleThreshold() int {
+	if c.IdleThreshold <= 0 {
+		return defaultIdleThreshold
+	}
+	return c.IdleThreshold
 }
 
 func getHostname() string {
@@ -381,6 +395,53 @@ func publishDiscoveryMessages(client mqtt.Client) {
 	}
 	publishConfig(client, "button", hostname+"_reboot", rebootConfig)
 
+	// Binary sensor for display on/off status
+	displayOnConfig := map[string]interface{}{
+		"name":                  "Display On",
+		"unique_id":             "mac2mqtt_" + hostname + "_display_on",
+		"state_topic":           prefix + "/status/display_on",
+		"payload_on":            "true",
+		"payload_off":           "false",
+		"icon":                  "mdi:monitor",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "binary_sensor", hostname+"_display_on", displayOnConfig)
+
+	// Binary sensor for user activity (keyboard/mouse input)
+	userActiveConfig := map[string]interface{}{
+		"name":                  "User Active",
+		"unique_id":             "mac2mqtt_" + hostname + "_user_active",
+		"state_topic":           prefix + "/status/user_active",
+		"payload_on":            "true",
+		"payload_off":           "false",
+		"device_class":          "occupancy",
+		"icon":                  "mdi:keyboard",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "binary_sensor", hostname+"_user_active", userActiveConfig)
+
+	// Sensor for idle time (seconds since last keyboard/mouse input)
+	idleTimeConfig := map[string]interface{}{
+		"name":                  "Idle Time",
+		"unique_id":             "mac2mqtt_" + hostname + "_idle_time",
+		"state_topic":           prefix + "/status/idle_time",
+		"unit_of_measurement":   "s",
+		"device_class":          "duration",
+		"state_class":           "measurement",
+		"icon":                  "mdi:timer-sand",
+		"availability_topic":    prefix + "/status/alive",
+		"payload_available":     "true",
+		"payload_not_available": "false",
+		"device":                device,
+	}
+	publishConfig(client, "sensor", hostname+"_idle_time", idleTimeConfig)
+
 	// Button for display sleep
 	displaysleepConfig := map[string]interface{}{
 		"name":                  "Display Sleep",
@@ -577,6 +638,8 @@ var connectHandler mqtt.OnConnectHandler = func(client mqtt.Client) {
 	updateSystemUptime(client)
 	updateNetworkActivity(client)
 	updateTemperatures(client)
+	updateDisplayOn(client)
+	updateUserActivity(client)
 
 	listen(client, getTopicPrefix()+"/command/#")
 }
@@ -858,6 +921,99 @@ func getActiveApp() string {
 
 func updateActiveApp(client mqtt.Client) {
 	token := publishMQTT(client, getTopicPrefix()+"/status/active_app", 0, false, getActiveApp())
+	token.Wait()
+}
+
+func getDisplayOn() bool {
+	// IODisplayWrangler manages all displays on Intel Macs (built-in + external)
+	output, err := tryGetCommandOutput("/usr/sbin/ioreg", "-r", "-d", "1", "-w", "0", "-c", "IODisplayWrangler")
+	if err == nil {
+		r := regexp.MustCompile(`"CurrentPowerState"\s*=\s*(\d+)`)
+		matches := r.FindStringSubmatch(output)
+		if len(matches) > 1 {
+			state, _ := strconv.Atoi(matches[1])
+			return state >= 4
+		}
+	}
+
+	// On Apple Silicon (or if IODisplayWrangler not found), check all IODisplay instances.
+	// IODisplay is the base class for all display types (AppleBacklightDisplay for built-in,
+	// plus external display classes), so this covers both built-in and external displays.
+	output, err = tryGetCommandOutput("/usr/sbin/ioreg", "-r", "-w", "0", "-c", "IODisplay")
+	if err == nil {
+		r := regexp.MustCompile(`"CurrentPowerState"\s*=\s*(\d+)`)
+		allMatches := r.FindAllStringSubmatch(output, -1)
+		for _, matches := range allMatches {
+			if len(matches) > 1 {
+				state, _ := strconv.Atoi(matches[1])
+				if state >= 4 {
+					return true
+				}
+			}
+		}
+		if len(allMatches) > 0 {
+			return false
+		}
+	}
+
+	// Default to true if we can't determine display state
+	if debugMode {
+		log.Println("Warning: unable to determine display power state, defaulting to on")
+	}
+	return true
+}
+
+func updateDisplayOn(client mqtt.Client) {
+	token := publishMQTT(client, getTopicPrefix()+"/status/display_on", 0, false, strconv.FormatBool(getDisplayOn()))
+	token.Wait()
+}
+
+// parseHIDIdleTime extracts the HIDIdleTime value (nanoseconds since last
+// keyboard/mouse input) from ioreg output for the IOHIDSystem class.
+func parseHIDIdleTime(output string) (int64, error) {
+	r := regexp.MustCompile(`"HIDIdleTime"\s*=\s*(\d+)`)
+	matches := r.FindStringSubmatch(output)
+	if len(matches) < 2 {
+		return 0, fmt.Errorf("HIDIdleTime not found in ioreg output")
+	}
+	return strconv.ParseInt(matches[1], 10, 64)
+}
+
+func idleNanosToSeconds(nanos int64) int64 {
+	return nanos / int64(time.Second)
+}
+
+func isUserActive(idleSeconds int64, threshold int) bool {
+	return idleSeconds < int64(threshold)
+}
+
+// getIdleSeconds returns the number of seconds since the last keyboard or
+// mouse input, as reported by the IOHIDSystem driver.
+func getIdleSeconds() (int64, error) {
+	output, err := tryGetCommandOutput("/usr/sbin/ioreg", "-r", "-d", "1", "-w", "0", "-c", "IOHIDSystem")
+	if err != nil {
+		return 0, err
+	}
+	nanos, err := parseHIDIdleTime(output)
+	if err != nil {
+		return 0, err
+	}
+	return idleNanosToSeconds(nanos), nil
+}
+
+func updateUserActivity(client mqtt.Client) {
+	idleSeconds, err := getIdleSeconds()
+	if err != nil {
+		if debugMode {
+			log.Printf("Warning: unable to determine idle time: %v", err)
+		}
+		return
+	}
+
+	prefix := getTopicPrefix()
+	token := publishMQTT(client, prefix+"/status/idle_time", 0, false, strconv.FormatInt(idleSeconds, 10))
+	token.Wait()
+	token = publishMQTT(client, prefix+"/status/user_active", 0, false, strconv.FormatBool(isUserActive(idleSeconds, idleThreshold)))
 	token.Wait()
 }
 
@@ -1764,6 +1920,8 @@ func main() {
 	var wg sync.WaitGroup
 
 	hostname = getHostname()
+	idleThreshold = c.getIdleThreshold()
+	log.Printf("User idle threshold: %d seconds", idleThreshold)
 	mqttClient := getMQTTClient(c.Ip, c.Port, c.User, c.Password)
 
 	volumeTicker := time.NewTicker(2 * time.Second)
@@ -1793,6 +1951,8 @@ func main() {
 				updateMute(mqttClient)
 				updateActiveApp(mqttClient)
 				updateNetworkActivity(mqttClient)
+				updateDisplayOn(mqttClient)
+				updateUserActivity(mqttClient)
 
 			case _ = <-batteryTicker.C:
 				updateBattery(mqttClient)

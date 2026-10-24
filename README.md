@@ -58,6 +58,9 @@ mac2mqtt publishes the following metrics to MQTT:
 | **Last Boot Time** | `mac2mqtt/HOSTNAME/status/uptime` | ISO 8601 timestamp | Every 60 seconds | Timestamp of when the system last booted (displays as relative time in Home Assistant) |
 | **Network Upload Rate** | `mac2mqtt/HOSTNAME/status/network_upload_rate` | KB/s (decimal) | Every 2 seconds | Current upload rate in kilobytes per second |
 | **Network Download Rate** | `mac2mqtt/HOSTNAME/status/network_download_rate` | KB/s (decimal) | Every 2 seconds | Current download rate in kilobytes per second |
+| **Display On** | `mac2mqtt/HOSTNAME/status/display_on` | `true` / `false` | Every 2 seconds | Whether any display (built-in or external) is currently on |
+| **User Active** | `mac2mqtt/HOSTNAME/status/user_active` | `true` / `false` | Every 2 seconds | Whether someone is using the computer (keyboard/mouse input within the idle threshold) |
+| **Idle Time** | `mac2mqtt/HOSTNAME/status/idle_time` | Seconds (integer) | Every 2 seconds | Seconds since the last keyboard or mouse input |
 
 **Notes:**
 - `HOSTNAME` is automatically derived from your macOS computer's hostname (e.g., `bessarabov-osx`)
@@ -163,6 +166,7 @@ dry_run: false
 * **debug** (optional) - Enable debug logging to see all MQTT messages being published (default: false)
 * **dry_run** (optional) - Test mode that simulates MQTT without connecting to a real broker (default: false)
 * **auto_update** (optional) - Enable automatic updates from GitHub releases (default: true)
+* **idle_threshold** (optional) - Seconds without keyboard/mouse input before the **User Active** sensor reports `false` (default: 300)
 
 #### Debug Mode
 
@@ -708,6 +712,40 @@ Current network download rate in kilobytes per second.
 **Example values:** `0.00`, `234.56`, `1024.32`
 
 **Note:** Rate is calculated by comparing network interface statistics over time. First measurement will always be `0.00`.
+
+#### `mac2mqtt/COMPUTER_NAME/status/display_on`
+
+**Values:** `true` / `false`
+
+Whether any connected display (built-in or external) is currently on.
+
+**Update frequency:** Every 2 seconds
+
+**Note:** On Intel Macs, uses `IODisplayWrangler` which manages all displays. On Apple Silicon, queries all `IODisplay` instances to detect both built-in and external displays. Reports `true` if any display is active (e.g., in clamshell mode with an external monitor).
+
+#### `mac2mqtt/COMPUTER_NAME/status/user_active`
+
+**Values:** `true` / `false`
+
+Whether someone is currently using the computer. Reports `true` while the time since the last keyboard or mouse input is below the configured `idle_threshold` (default: 300 seconds), and `false` once the computer has been idle longer than that.
+
+**Update frequency:** Every 2 seconds
+
+**Note:** Uses `HIDIdleTime` from the `IOHIDSystem` driver via `ioreg`. No additional permissions are required. Exposed to Home Assistant as an `occupancy` binary sensor, so it shows as *Detected* / *Clear*. Adjust the threshold in `mac2mqtt.yaml`:
+
+```yaml
+idle_threshold: 120  # seconds, default 300
+```
+
+#### `mac2mqtt/COMPUTER_NAME/status/idle_time`
+
+**Values:** Integer (seconds)
+
+Number of seconds since the last keyboard or mouse input.
+
+**Update frequency:** Every 2 seconds
+
+**Example values:** `0`, `12`, `3600`
 
 ### Command Topics
 

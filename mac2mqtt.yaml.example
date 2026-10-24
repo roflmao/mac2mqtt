@@ -8,6 +8,9 @@ mqtt_password: your_password
 # Auto-update settings
 # auto_update: true  # Default: true. Set to false to disable automatic updates
 
+# User activity - seconds without keyboard/mouse input before "User Active" reports false (optional, default: 300)
+# idle_threshold: 300
+
 # Debug mode - logs MQTT publishes (optional, default: false)
 # debug: false
 
