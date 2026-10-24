@@ -80,6 +80,15 @@ This document tracks potential features and enhancements for mac2mqtt.
   - Available resolutions
   - External displays
 
+### User Activity
+
+- [x] **User Active / Idle Status**
+  - Detect if someone is using the computer (keyboard or mouse input)
+  - Binary sensor for Home Assistant ("user active")
+  - Idle time sensor (seconds since last input)
+  - Configurable idle threshold (e.g. 5 minutes)
+  - Source: `ioreg -c IOHIDSystem` `HIDIdleTime` (no extra permissions required)
+
 ### Audio Enhancements
 
 - [ ] **Audio Input Device**
