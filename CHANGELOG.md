@@ -1,6 +1,12 @@
 # Changelog for mac2mqtt
 
 ```
+2.0.9   2026-10-24
+        [Patch]
+        * Add AGENTS.md with contributor guidance for coding agents
+        * Add user activity and idle time sensors
+        * Add display on/off status binary sensor
+
 2.0.8   2026-03-07
         [Patch]
         * Skip config source check when config already exists at install destination
