@@ -1,6 +1,12 @@
 # Changelog for mac2mqtt
 
 ```
+2.0.10   2026-10-24
+        [Patch]
+        * Update dependencies to latest versions
+        * Build with Go 1.27 and read the Go version from go.mod in CI
+        * Update GitHub Actions to Node 24 releases
+
 2.0.9   2026-10-24
         [Patch]
         * Add AGENTS.md with contributor guidance for coding agents
