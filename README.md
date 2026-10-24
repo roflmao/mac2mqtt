@@ -72,7 +72,7 @@ All metrics are published immediately upon connection and then updated according
 
 * macOS (any version with `osascript` and `pmset` support)
 * MQTT broker (e.g., Mosquitto)
-* Go 1.22+ (only if building from source)
+* Go 1.27+ (only if building from source)
 
 ## Overview
 
@@ -126,7 +126,7 @@ For running as a system service (LaunchDaemon), Option 1 is recommended as it do
 
 ### Option 2: Build from Source
 
-Requirements: [Go 1.22+](https://go.dev/doc/install)
+Requirements: [Go 1.27+](https://go.dev/doc/install)
 
 ```bash
 git clone https://github.com/roflmao/mac2mqtt.git
