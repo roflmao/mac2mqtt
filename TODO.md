@@ -225,6 +225,18 @@ This document tracks potential features and enhancements for mac2mqtt.
   - Enable/disable specific metrics
   - Reduce unnecessary updates
 
+### Release Pipeline
+
+- [ ] **Remove the duplicate ARM asset upload**
+  - `mac2mqtt-darwin-arm64` is listed twice under `files:` in `.github/workflows/release.yaml`
+  - softprops/action-gh-release treats each line as an upload; duplicate asset names can fail the tag run with an already-exists error
+  - Introduced in the v2.1.0 fix; the line was already present before that change
+
+- [ ] **Leave the generated changelog to CI**
+  - The 2.1.0 CHANGELOG entry was written by hand because the tag-triggered workflow never runs `.github/scripts/update_changelog.py`, and its description script aborts without an entry
+  - Make `release.yaml` generate and commit the entry the same way `release.yml` does, so manual tag releases cannot diverge from the commit-derived changelog
+  - Until then, document the manual-tag path (and that `[skip ci]` on the tagged commit suppresses the tag workflow) in AGENTS.md
+
 ## Implementation Priority
 
 ### Phase 1 - Core Improvements (High Priority)
