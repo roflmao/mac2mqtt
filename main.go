@@ -1634,20 +1634,50 @@ func checkForUpdate() (*GitHubRelease, error) {
 	return &release, nil
 }
 
-// isNewerVersion compares two semantic versions
-// Returns true if newVer is newer than currentVer
-func isNewerVersion(currentVer, newVer string) bool {
-	// Strip 'v' prefix if present
-	currentVer = strings.TrimPrefix(currentVer, "v")
-	newVer = strings.TrimPrefix(newVer, "v")
+// parseVersion parses a "v1.2.3" or "1.2.3" string into its numeric parts.
+func parseVersion(v string) ([3]int, error) {
+	var parts [3]int
+	v = strings.TrimPrefix(strings.TrimSpace(v), "v")
+	fields := strings.Split(v, ".")
+	if len(fields) != 3 {
+		return parts, fmt.Errorf("invalid version %q: expected MAJOR.MINOR.PATCH", v)
+	}
+	for i, f := range fields {
+		n, err := strconv.Atoi(f)
+		if err != nil || n < 0 {
+			return parts, fmt.Errorf("invalid version %q: component %q is not a number", v, f)
+		}
+		parts[i] = n
+	}
+	return parts, nil
+}
 
+// isNewerVersion compares two semantic versions numerically.
+// Returns true if newVer is newer than currentVer.
+func isNewerVersion(currentVer, newVer string) bool {
 	// Handle dev version
-	if currentVer == "dev" {
+	if strings.TrimPrefix(currentVer, "v") == "dev" {
 		return true // Always update from dev
 	}
 
-	// Simple string comparison works for semantic versions
-	return newVer > currentVer
+	current, err := parseVersion(currentVer)
+	if err != nil {
+		log.Printf("Warning: cannot parse current version: %v", err)
+		return false
+	}
+	latest, err := parseVersion(newVer)
+	if err != nil {
+		log.Printf("Warning: cannot parse release version: %v", err)
+		return false
+	}
+
+	// Compare major, minor, patch as numbers so that 2.0.10 > 2.0.8
+	for i := 0; i < 3; i++ {
+		if latest[i] != current[i] {
+			return latest[i] > current[i]
+		}
+	}
+	return false
 }
 
 // getBinaryNameForPlatform returns the expected binary name for current platform

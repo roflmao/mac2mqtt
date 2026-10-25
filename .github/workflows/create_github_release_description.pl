@@ -69,7 +69,7 @@ sub main {
 $changelog_for_this_version
 ```
 
-Full diff: https://github.com/roflmao/mac2mqtt/compare/$previous_tag...$current_tag
+Full diff: https://github.com/roflmao/mac2mqtt/compare/v$previous_tag...$current_tag
 ";
 
     write_file('release_description.txt', $release_description);

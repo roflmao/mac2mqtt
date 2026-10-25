@@ -1,6 +1,11 @@
 # Changelog for mac2mqtt
 
 ```
+2.1.0   2026-10-25
+        [Minor]
+        * Fix auto-update version comparison so 2.0.10 and later are seen as newer than 2.0.8
+        * Upload the Apple Silicon binary from the tag-triggered release workflow
+
 2.0.10   2026-10-24
         [Patch]
         * Update dependencies to latest versions
