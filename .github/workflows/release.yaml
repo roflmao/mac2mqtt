@@ -48,3 +48,4 @@ jobs:
           files: |
             mac2mqtt-darwin-amd64
             mac2mqtt-darwin-arm64
+            mac2mqtt-darwin-arm64
